@@ -245,6 +245,7 @@
     'icgc.phenotype',
     'icgc.beacon',
     'icgc.downloader',
+    'icgc.oncogrid',
     'icgc.pathwayviewer',
     'icgc.repositories',
     'icgc.repository',
