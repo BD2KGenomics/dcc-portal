@@ -33,7 +33,7 @@
               .then(function(observationHits) {
 
                 var observations = _(observationHits).map(function(o) {
-                  return { donorId: o.donorId, gene: o.geneId, consequence: 1 };
+                  return { donorId: o.donorId, gene: o.geneId, consequence: o.consequenceType };
                 })
                   .filter(function(o) {
                     return geneIds.indexOf(o.gene) > 0 && donorIds.indexOf(o.donorId) > 0;
@@ -46,7 +46,7 @@
 
                 var grid = window.oncogrid(donors, genes, observations, '#oncogrid-div', params);
                 grid.init();
-                grid.heatMap = true;
+                //grid.heatMap = true;
                 grid.renderFirst();
 
                 $scope.removeCleanDonors = function() {
@@ -73,6 +73,10 @@
                   grid.sortDonors(function(a, b) {
                     return a.age - b.age;
                   });
+                };
+                
+                $scope.heatMap = function() {
+                  grid.toggleHeatmap();
                 };
 
               });

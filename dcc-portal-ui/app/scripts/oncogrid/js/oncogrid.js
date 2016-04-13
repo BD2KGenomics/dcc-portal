@@ -10,9 +10,12 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   this.heatMap = false; // Heatmap view turned off by default.
 
   this.colorMap = {
-    1: '#ff825a',
-    2: '#57dba4',
-    3: '#af57db',
+    'missense_variant': '#ff825a',
+    'frameshift_variant': '#57dba4',
+    'stop_gained': '#af57db',
+    'start_lost': '#af57db',
+    'stop_lost': '#ffe',
+    'initiator_codon_variant': '#af57db'
   };
 
   var _self = this;
@@ -375,15 +378,10 @@ window.oncogrid = function(donors, genes, observations, element, params) {
     if (_self.heatMap === true) {
       return _self.y(pseudo_genes.indexOf(d.gene));
     }
-    if (d.consequence === 1) {
-      return _self.y(pseudo_genes.indexOf(d.gene));
-    } else if (d.consequence === 2) {
-      return _self.y(pseudo_genes.indexOf(d.gene)) + _self.cellHeight / 3;
-    } else if (d.consequence === 3) {
-      return _self.y(pseudo_genes.indexOf(d.gene)) + (_self.cellHeight / 3) * 2;
-    } else {
-      return _self.y(pseudo_genes.indexOf(d.gene));
-    }
+    
+    var keys = Object.keys(_self.colorMap);
+    return  _self.y(pseudo_genes.indexOf(d.gene)) + (_self.cellHeight / keys.length) *
+      (keys.indexOf(d.consequence) - 1);
   };
 
   this.getColor = function(d) {
@@ -412,7 +410,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
     if (_self.heatMap === true) {
       return _self.cellHeight;
     } else {
-      return _self.cellHeight / 3;
+      return _self.cellHeight / Object.keys(_self.colorMap).length;
     }
   };
 
@@ -536,7 +534,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
 
     d3.selectAll('.sortable-rect')
       .transition()
-      .attr('height', _self.cellHeight)
+      .attr('height', function(d){ return _self.getHeight(d)})
       .attr('y', function(d) {
         return _self.getY(d);
       })

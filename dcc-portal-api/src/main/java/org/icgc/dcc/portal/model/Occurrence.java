@@ -57,6 +57,8 @@ public class Occurrence {
   String mutation;
   @ApiModelProperty(value = "Gene Id", required = true)
   String geneId;
+  @ApiModelProperty(value = "Consequence Type", required = true)
+  String consequenceType;
   @ApiModelProperty(value = "Observation", required = true)
   List<Observation> observations;
 
@@ -71,6 +73,7 @@ public class Occurrence {
     projectId = getString(fieldMap.get(fields.get("projectId")));
     mutation = getString(fieldMap.get(fields.get("mutation")));
     geneId = getString(fieldMap.get(fields.get("gene.id")));
+    consequenceType = getString(fieldMap.get(fields.get("mutation.consequenceType")));
     observations = buildObservations(getObservations(fieldMap));
   }
 

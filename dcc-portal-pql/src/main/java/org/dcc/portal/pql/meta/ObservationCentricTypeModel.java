@@ -52,7 +52,8 @@ public class ObservationCentricTypeModel extends TypeModel {
       "observation",
       "projectId",
       "start",
-      "gene.id");
+      "gene.id",
+      "mutation.consequenceType");
 
   public ObservationCentricTypeModel() {
     super(defineFields(), defineInternalAliases(), PUBLIC_FIELDS, INCLUDE_FIELDS);
