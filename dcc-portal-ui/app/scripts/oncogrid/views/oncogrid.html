@@ -1,9 +1,10 @@
-Using Top 10 Donors and Genes.
-
+Using Top 100 Donors and Top 50 Genes with a know Functional Impact
 <div id="oncogrid-div">
 
 </div>
 
 <div id="oncogrid-controls">
-  
+  <button class="btn btn-default" ng-click="removeCleanDonors()">Remove Donors With No Mutations</button>
+  <button class="btn btn-default" ng-click="removeCleanGenes()">Remove Genes With No Mutations</button>
+  <button class="btn btn-default" ng-click="clusterData()">Cluster Data</button>
 </div>
