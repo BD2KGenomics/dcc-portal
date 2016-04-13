@@ -15,11 +15,12 @@ window.oncogrid = function(donors, genes, observations, element, params) {
     3: '#af57db',
   };
 
+  var _self = this;
+
   /**
    * Returns 1 if at least one mutation, 0 otherwise. 
    */
   this.mutationScore = function(donor, gene) {
-    var _self = this;
 
     for (var i = 0; i < _self.observations.length; i++) {
       var obs = _self.observations[i];
@@ -35,7 +36,6 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Returns 1 if at least one mutation, 0 otherwise. 
    */
   this.mutationGeneScore = function(donor, gene) {
-    var _self = this;
 
     var retVal = 0;
     for (var i = 0; i < _self.observations.length; i++) {
@@ -52,7 +52,6 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Computes scores for donor sorting. 
    */
   this.computeScores = function() {
-    var _self = this;
 
     for (var i = 0; i < _self.donors.length; i++) {
       var donor = _self.donors[i];
@@ -66,7 +65,6 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.computeGeneScores = function() {
-    var _self = this;
 
     for (var i = 0; i < _self.genes.length; i++) {
       var gene = _self.genes[i];
@@ -95,12 +93,12 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Sorts donors by score
    */
   this.sortByScores = function() {
-    var _self = this;
+
     _self.donors.sort(_self.sortScore);
   };
 
   this.genesSortbyScores = function() {
-    var _self = this;
+
     _self.genes.sort(_self.sortScore);
   };
 
@@ -122,13 +120,13 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Initializes and creates the main SVG with rows and columns. Does prelim sort on data
    */
   this.init = function() {
-    var _self = this;
+
 
     _self.div = d3.select('body').append('div')
       .attr('class', 'tooltip')
       .style('opacity', 0);
 
-    _self.margin = { top: 50, right: 15, bottom: 15, left: 80 };
+    _self.margin = { top: 10, right: 15, bottom: 15, left: 80 };
     _self.width = _self.params.width;
     _self.height = _self.params.height;
 
@@ -182,6 +180,8 @@ window.oncogrid = function(donors, genes, observations, element, params) {
     _self.computeGeneScores();
     _self.computeScores();
     _self.sortByScores();
+
+    renderAgeHistogram();
   };
 
   /**
@@ -189,7 +189,6 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * mutation occurrences. 
    */
   this.renderFirst = function() {
-    var _self = this;
 
     _self.row.append('text')
       .attr('class', 'gene-label label-text-font')
@@ -232,12 +231,50 @@ window.oncogrid = function(donors, genes, observations, element, params) {
       .attr('stroke-width', 2);
   };
 
+  this.renderAgeHistogram = function() {
+
+    if (_self.topSVG === undefined) {
+      _self.topSVG = d3.select('#oncogrid-topcharts').append('svg')
+        .attr('width', _self.width + _self.margin.left + _self.margin.right)
+        .attr('height', 100)
+        .style('margin-left', _self.margin.left + 'px')
+        .append('g')
+        .attr('transform', 'translate(' + _self.margin.left + ',' + _self.margin.top + ')');
+    }
+
+    _self.topSVG.selectAll('rect')
+      .data(_self.donors)
+      .enter()
+      .append('rect')
+      .on('mouseover', function(d) {
+        _self.div.transition()
+          .duration(200)
+          .style('opacity', 0.9);
+        _self.div.html('Donor: ' + d.donorId + '<br/> Age:' + d.age + '<br/>')
+          .style('left', (d3.event.pageX + 10) + 'px')
+          .style('top', (d3.event.pageY - 28) + 'px');
+      })
+      .on('mouseout', function() {
+        _self.div.transition()
+          .duration(500)
+          .style('opacity', 0);
+      })
+      .transition()
+      .attr('class', function(d) { return 'sortable-bar ' + d.donorId+'-bar' })
+      .attr('width', _self.cellWidth - 2)
+      .attr('height', function(d) { return d.age; })
+      .attr('x', function(d) { return _self.x(_self.getDonorIndex(_self.donors, d.donorId)) + 1; })
+      .attr('y', function(d) { return 100 - d.age; })
+      .attr('fill', '#1693C0');
+
+  };
+
 
   /**
    * Defines the row drag behaviour for moving genes and binds it to the row elements. 
    */
   this.defineRowDragBehaviour = function() {
-    var _self = this;
+
 
     var drag = d3.behavior.drag();
     drag.on('dragstart', function() {
@@ -293,7 +330,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.cluster = function() {
-    var _self = this;
+
 
     _self.computeGeneScores();
     _self.genesSortbyScores();
@@ -306,7 +343,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Render function ensures presentation matches the data. Called after modifying data. 
    */
   this.render = function() {
-    var _self = this;
+
 
     d3.selectAll('.row')
       .transition()
@@ -320,13 +357,16 @@ window.oncogrid = function(donors, genes, observations, element, params) {
         return _self.getY(d);
       })
       .attr('x', function(d) { return _self.x(_self.getDonorIndex(_self.donors, d.donorId)); });
+
+    _self.topSVG.selectAll('rect')
+      .transition()
+      .attr('x', function(d) { return _self.x(_self.getDonorIndex(_self.donors, d.donorId)) + 1; });
   };
 
   /**
    * Function that determines the y position of a mutation within a cell
    */
   this.getY = function(d) {
-    var _self = this;
 
     var pseudo_genes = _self.genes.map(function(g) {
       return g.id;
@@ -347,17 +387,17 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.getColor = function(d) {
-    var _self = this;
+
 
     if (_self.heatMap === true) {
-      return '#f00';
+      return '#d33682';
     } else {
       return _self.colorMap[d.consequence];
     }
   };
 
   this.getOpacity = function() {
-    var _self = this;
+
 
     if (_self.heatMap === true) {
       return 0.3;
@@ -367,7 +407,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.getHeight = function() {
-    var _self = this;
+
 
     if (_self.heatMap === true) {
       return _self.cellHeight;
@@ -377,7 +417,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.toggleHeatmap = function() {
-    var _self = this;
+
     if (_self.heatMap === true) {
       _self.heatMap = false;
     } else {
@@ -395,7 +435,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.removeDonors = function(func) {
-    var _self = this;
+
 
     var removedList = [];
 
@@ -405,6 +445,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
       if (func(donor)) {
         removedList.push(donor.donorId);
         d3.selectAll('.' + donor.donorId + '-cell').remove();
+        d3.selectAll('.' + donor.donorId + '-bar').remove();
         _self.donors.splice(i, 1);
         i--;
       }
@@ -442,10 +483,14 @@ window.oncogrid = function(donors, genes, observations, element, params) {
         return _self.getY(d);
       })
       .attr('x', function(d) { return _self.x(_self.getDonorIndex(_self.donors, d.donorId)); });
+      
+    d3.selectAll('.sortable-bar')
+      .transition()
+      .attr('width', _self.cellWidth - 2)
+      .attr('x', function(d) { return _self.x(_self.getDonorIndex(_self.donors, d.donorId)) + 1; });
   };
 
   this.removeGenes = function(func) {
-    var _self = this;
 
     var removedList = [];
 
@@ -499,7 +544,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
   };
 
   this.sortDonors = function(func) {
-    var _self = this;
+
     _self.donors.sort(func);
     _self.render();
   };
