@@ -33,7 +33,7 @@
               .then(function(observationHits) {
 
                 var observations = _(observationHits).map(function(o) {
-                  return { donorId: o.donorId, gene: o.geneId, consequence: o.consequenceType };
+                  return { id: o.mutationId, donorId: o.donorId, gene: o.geneId, consequence: o.consequenceType };
                 })
                   .filter(function(o) {
                     return geneIds.indexOf(o.gene) > 0 && donorIds.indexOf(o.donorId) > 0;

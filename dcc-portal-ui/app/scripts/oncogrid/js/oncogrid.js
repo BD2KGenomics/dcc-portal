@@ -15,7 +15,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
     'stop_gained': '#af57db',
     'start_lost': '#af57db',
     'stop_lost': '#ffe',
-    'initiator_codon_variant': '#af57db'
+    'initiator_codon_variant': '#af57db',
   };
 
   var _self = this;
@@ -96,12 +96,10 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Sorts donors by score
    */
   this.sortByScores = function() {
-
     _self.donors.sort(_self.sortScore);
   };
 
   this.genesSortbyScores = function() {
-
     _self.genes.sort(_self.sortScore);
   };
 
@@ -123,7 +121,6 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Initializes and creates the main SVG with rows and columns. Does prelim sort on data
    */
   this.init = function() {
-
 
     _self.div = d3.select('body').append('div')
       .attr('class', 'tooltip')
@@ -213,7 +210,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
         _self.div.transition()
           .duration(200)
           .style('opacity', 0.9);
-        _self.div.html(d.donorId + '<br/>' + d.gene + '<br/>')
+        _self.div.html(d.donorId + '<br/>' + d.gene + '<br/>' + d.consequence)
           .style('left', (d3.event.pageX + 10) + 'px')
           .style('top', (d3.event.pageY - 28) + 'px');
       })
@@ -221,6 +218,9 @@ window.oncogrid = function(donors, genes, observations, element, params) {
         _self.div.transition()
           .duration(500)
           .style('opacity', 0);
+      })
+      .on('click', function(d) {
+        window.location = '/mutations/' + d.id;
       })
       .transition()
       .attr('class', function(d) { return 'sortable-rect ' + d.donorId + '-cell ' + d.gene + '-cell'; })
@@ -277,8 +277,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
    * Defines the row drag behaviour for moving genes and binds it to the row elements. 
    */
   this.defineRowDragBehaviour = function() {
-
-
+    
     var drag = d3.behavior.drag();
     drag.on('dragstart', function() {
       d3.event.sourceEvent.stopPropagation(); // silence other listeners
@@ -388,7 +387,7 @@ window.oncogrid = function(donors, genes, observations, element, params) {
 
 
     if (_self.heatMap === true) {
-      return '#d33682';
+      return '#D33682';
     } else {
       return _self.colorMap[d.consequence];
     }
