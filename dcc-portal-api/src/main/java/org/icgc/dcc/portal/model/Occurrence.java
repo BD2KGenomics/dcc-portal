@@ -25,9 +25,6 @@ import static org.icgc.dcc.portal.util.ElasticsearchResponseUtils.getString;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Value;
-import lombok.val;
-
 import org.icgc.dcc.portal.model.IndexModel.Kind;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -35,6 +32,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.Lists;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
+
+import lombok.Value;
+import lombok.val;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -57,6 +57,8 @@ public class Occurrence {
   String mutation;
   @ApiModelProperty(value = "Observation", required = true)
   List<Observation> observations;
+  @ApiModelProperty(value = "Gene Id", required = true)
+  String geneId;
 
   @JsonCreator
   public Occurrence(Map<String, Object> fieldMap) {
@@ -69,6 +71,7 @@ public class Occurrence {
     projectId = getString(fieldMap.get(fields.get("projectId")));
     mutation = getString(fieldMap.get(fields.get("mutation")));
     observations = buildObservations(getObservations(fieldMap));
+    geneId = getString(fieldMap.get(fields.get("gene.id")));
   }
 
   @SuppressWarnings("unchecked")
