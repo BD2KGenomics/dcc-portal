@@ -37,6 +37,7 @@
     _this.filteredList = [];
     _this.filteredSetType = '';
     _this.selectedIds = [];
+    _this.selectedTypes = [];
 
     _this.allSets = SetService.getAll();
 
@@ -81,11 +82,15 @@
           return true;
         });
       } else if (type === 'phenotype') {
-        _this.filteredList = _.filter(SetService.getAll(), function(set) {
+        _this.filteredList = _.filter(SetService.getAll(), function (set) {
           return set.type === 'donor';
         });
+      } else if (type === 'oncogrid') {
+        _this.filteredList = _.filter(SetService.getAll(), function (set) {
+          return set.type === 'donor' || set.type === 'gene';
+        });
       } else {
-        _this.filteredList = _.filter(SetService.getAll(), function(set) {
+        _this.filteredList = _.filter(SetService.getAll(), function (set) {
           return set.type === 'donor';
         });
       }
@@ -94,6 +99,10 @@
 
     _this.isLaunchingAnalysis = function() {
       return _isLaunchingAnalysis;
+    };
+    
+    _this.isValidOncoSelection = function() {
+      return _this.selectedTypes.indexOf('gene') >= 0 && _this.selectedTypes.indexOf('donor') >= 0;
     };
 
 
@@ -137,6 +146,27 @@
           console.log('cannot create set operation');
         }
         $location.path('analysis/view/set/' + data.id);
+      })
+      .finally(function() {
+        _isLaunchingAnalysis = false;
+      });
+    };
+    
+    _this.launchOncoGrid = function (setIds) {
+      
+      if (_isLaunchingAnalysis) {
+        return;
+      }
+
+      _isLaunchingAnalysis = true;
+      
+      var payload = setIds;
+      var promise = Restangular.one('analysis').post('oncogrid', payload, {}, {'Content-Type': 'application/json'});
+      
+      promise.then(function(data) {
+        if (data.id) {
+          $location.path('analysis/view/analysis/' + data.id);
+        }
       })
       .finally(function() {
         _isLaunchingAnalysis = false;

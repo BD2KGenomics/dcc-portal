@@ -198,7 +198,7 @@
     };
   });
 
-  module.service('Occurrences', function (Restangular, FilterService, Occurrence) {
+  module.service('Occurrences', function (Restangular, FilterService, Occurrence, $q) {
     this.handler = Restangular.all('occurrences');
 
     this.getList = function (params) {
@@ -239,8 +239,7 @@
       
        pageAll(params);
        return deferred.promise;
-
-    }
+    };
 
     this.one = function (id) {
       return id ? Occurrence.init(id) : Occurrence;

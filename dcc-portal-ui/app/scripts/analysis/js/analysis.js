@@ -224,6 +224,8 @@
         return 'Enrichment Analysis';
       } else if (type === 'phenotype') {
         return 'Phenotype Comparison';
+      } else if (type === 'oncogrid') {
+        return 'OncoGrid';
       } else {
         return '???';
       }
@@ -236,6 +238,8 @@
         return 'Perform enrichment analysis on top 50 genes in Cancer Gene Census.';
       } else if (type === 'phenotype') {
         return 'Compare phenotypes across brain, breast, and colorectal cancer donors.';
+      } else if (type === 'oncogrid') {
+        return 'Coming soon...';
       } else {
         return '';
       }
@@ -251,6 +255,8 @@
         return 'Compare some characteristics (e.g. gender, vital status and age at diagnosis) between your donor sets.';
       } else if (type === 'coverage') {
         return 'Compare mutations occurring in your Donor sets.';
+      } else if (type ==='oncogrid') {
+        return 'Display OncoGrid diagram to visualize genetic alteration occurrences affecting a set of donors.';
       } else {
         return '';
       }
