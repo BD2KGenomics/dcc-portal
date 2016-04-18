@@ -152,7 +152,7 @@
       });
     };
     
-    _this.launchOncoGrid = function (setIds) {
+    _this.launchOncogridAnalysis = function (setIds) {
       
       if (_isLaunchingAnalysis) {
         return;

@@ -29,3 +29,8 @@ CREATE TABLE IF NOT EXISTS phenotype_analysis(
    version  INT,
    data     TEXT
 );
+CREATE TABLE IF NOT EXISTS oncogrid_analysis(
+   id       UUID PRIMARY KEY,
+   version  INT,
+   data     TEXT
+);

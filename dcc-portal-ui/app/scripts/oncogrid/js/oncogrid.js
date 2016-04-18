@@ -21,3 +21,17 @@
   angular.module('icgc.oncogrid', []);
 
 })();
+
+
+(function() {
+  'use strict';
+  
+  var module = angular.module('icgc.oncogrid.directives', []);
+  
+  module.directive('oncogridAnalysis', function() {
+    return {
+      templateUrl: '/scripts/oncogrid/views/oncogrid-analysis.html'
+    }
+  });
+  
+})()

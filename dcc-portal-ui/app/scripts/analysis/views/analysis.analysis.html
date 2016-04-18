@@ -60,6 +60,11 @@
                     <phenotype-result data-item="analysisResult"></phenotype-result>
                 </div>
             </div>
+            <div data-ng-if="analysisType === 'oncogrid'">
+                <div data-ng-if="!error">
+                    <oncogrid-analysis data-item="analysisResult"></oncogrid-analysis>
+                </div>
+            </div>
             <div class="clearfix"></div>
     
             <div data-ng-if="error" class="alert-error">

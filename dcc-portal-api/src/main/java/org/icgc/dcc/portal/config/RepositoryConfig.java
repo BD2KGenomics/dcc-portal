@@ -19,6 +19,7 @@ package org.icgc.dcc.portal.config;
 
 import org.icgc.dcc.portal.repository.EnrichmentAnalysisRepository;
 import org.icgc.dcc.portal.repository.EntityListRepository;
+import org.icgc.dcc.portal.repository.OncogridAnalysisRepository;
 import org.icgc.dcc.portal.repository.PhenotypeAnalysisRepository;
 import org.icgc.dcc.portal.repository.UnionAnalysisRepository;
 import org.icgc.dcc.portal.repository.UserGeneSetRepository;
@@ -61,6 +62,11 @@ public class RepositoryConfig {
   @Bean
   public PhenotypeAnalysisRepository phenotypeAnalysisRepository(DBI dbi) {
     return dbi.open(PhenotypeAnalysisRepository.class);
+  }
+
+  @Bean
+  public OncogridAnalysisRepository oncogridAnalysisRepository(DBI dbi) {
+    return dbi.open(OncogridAnalysisRepository.class);
   }
 
   @Bean

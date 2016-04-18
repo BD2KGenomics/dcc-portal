@@ -17,12 +17,18 @@
  */
 package org.icgc.dcc.portal.resource;
 
+import java.util.UUID;
+
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 
+import org.icgc.dcc.portal.model.OncogridAnalysis;
 import org.icgc.dcc.portal.service.OncogridAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import com.wordnik.swagger.annotations.ApiParam;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +42,10 @@ public class OncogridAnalaysisResource {
   private final OncogridAnalysisService service;
 
   @POST
-  public int getOncogrid() {
-    // TODO: Implement this.
-    return 200;
+  public OncogridAnalysis createOncogrid(
+      @ApiParam(value = "The donor set") @FormParam("donorSet") UUID donorSet,
+      @ApiParam(value = "The donor set") @FormParam("geneSet") UUID geneSet) {
+
+    return service.createAnalysis(geneSet, donorSet);
   }
 }
