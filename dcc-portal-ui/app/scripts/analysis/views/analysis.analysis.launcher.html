@@ -231,7 +231,7 @@
             <div>Demo: <a href="" data-ng-click="NAC.demoSetOperation()">{{NAC.analysisDemoDescription('oncogrid')}}</a></div>
             
             <div> 
-                <div>Select 1 Gene set and 1 Mutation set, then click on Run.</div>
+                <div>Select 1 Gene set and 1 Donor set, then click on Run.</div>
                 <table class="table table-selectable"> 
                     <thead>
                         <th></th>
@@ -246,7 +246,7 @@
                         </tr>
                         <tr data-ng-repeat="item in NAC.allSets" style="color:{{NAC.isInFilter(item)?'':'#CCC'}}"> 
                             <td class="text-center" style="width:2rem"> 
-                               <span data-ng-if="NAC.isInFilter(item)" data-ng-click="NAC.filteredSetType = item.type; NAC.toggle(item.id); NAC.selectedTypes.push(item.type);">
+                               <span data-ng-if="NAC.isInFilter(item)" data-ng-click="NAC.toggleOnco(item.id, item.type);">
                                   <i data-ng-class="{'icon-check-empty': NAC.selectedIds.indexOf(item.id) === -1, 'icon-check': NAC.selectedIds.indexOf(item.id) >=0}"></i>
                                </span>
                             </td>

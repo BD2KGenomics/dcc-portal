@@ -15,52 +15,37 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN                         
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.icgc.dcc.portal.service;
-
-import static com.google.common.base.Preconditions.checkState;
-import static lombok.AccessLevel.PRIVATE;
+package org.icgc.dcc.portal.model;
 
 import java.util.UUID;
 
-import org.icgc.dcc.portal.config.PortalProperties;
-import org.icgc.dcc.portal.model.OncogridAnalysis;
-import org.icgc.dcc.portal.repository.OncogridAnalysisRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.Getter;
+import lombok.Data;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.val;
 
-@Service
-@RequiredArgsConstructor(onConstructor = @__(@Autowired))
-public class OncogridAnalysisService {
+@Data
+public class OncogridAnalysisRequest {
 
   @NonNull
-  private final OncogridAnalysisRepository oncogridRepository;
+  private final UUID geneSet;
   @NonNull
-  private final PortalProperties properties;
+  private final UUID donorSet;
 
-  @Getter(lazy = true, value = PRIVATE)
-  private final int currentDataVersion = resolveDataVersion();
+  @JsonCreator
+  public OncogridAnalysisRequest(
+      @NonNull @JsonProperty(JsonPropertyName.geneSet) UUID geneSet,
+      @NonNull @JsonProperty(JsonPropertyName.donorSet) UUID donorSet) {
 
-  public OncogridAnalysis createAnalysis(@NonNull final UUID geneSet, @NonNull final UUID donorSet) {
-    val dataVersion = getCurrentDataVersion();
-    val newAnalysis = new OncogridAnalysis(UUID.randomUUID(), geneSet, donorSet);
-
-    val insertCount = oncogridRepository.save(newAnalysis, dataVersion);
-    checkState(insertCount == 1, "Could not save analysis. Insert count: %s", insertCount);
-
-    return newAnalysis;
+    this.geneSet = geneSet;
+    this.donorSet = donorSet;
   }
 
-  public OncogridAnalysis getAnalysis(@NonNull final UUID id) {
-    return oncogridRepository.find(id);
-  }
+  private final static class JsonPropertyName {
 
-  private int resolveDataVersion() {
-    return properties.getRelease().getDataVersion();
+    final static String donorSet = "donorSet";
+    final static String geneSet = "geneSet";
   }
 
 }

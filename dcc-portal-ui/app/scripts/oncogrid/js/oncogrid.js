@@ -18,7 +18,7 @@
 (function() {
   'use strict';
 
-  angular.module('icgc.oncogrid', []);
+  angular.module('icgc.oncogrid', ['icgc.oncogrid.directives']);
 
 })();
 
@@ -31,7 +31,7 @@
   module.directive('oncogridAnalysis', function() {
     return {
       templateUrl: '/scripts/oncogrid/views/oncogrid-analysis.html'
-    }
+    };
   });
   
-})()
+})();

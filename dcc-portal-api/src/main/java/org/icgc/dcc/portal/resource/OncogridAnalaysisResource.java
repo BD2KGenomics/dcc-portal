@@ -17,13 +17,20 @@
  */
 package org.icgc.dcc.portal.resource;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.icgc.dcc.portal.resource.ResourceUtils.checkRequest;
+
 import java.util.UUID;
 
-import javax.ws.rs.FormParam;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 
 import org.icgc.dcc.portal.model.OncogridAnalysis;
+import org.icgc.dcc.portal.model.OncogridAnalysisRequest;
 import org.icgc.dcc.portal.service.OncogridAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -42,10 +49,22 @@ public class OncogridAnalaysisResource {
   private final OncogridAnalysisService service;
 
   @POST
+  @Consumes(APPLICATION_JSON)
+  @Produces(APPLICATION_JSON)
   public OncogridAnalysis createOncogrid(
-      @ApiParam(value = "The donor set") @FormParam("donorSet") UUID donorSet,
-      @ApiParam(value = "The donor set") @FormParam("geneSet") UUID geneSet) {
+      @ApiParam(value = "The entity sets") OncogridAnalysisRequest request) {
 
-    return service.createAnalysis(geneSet, donorSet);
+    return service.createAnalysis(request.getGeneSet(), request.getDonorSet());
   }
+
+  @GET
+  @Path("/{oncogrid}")
+  @Produces(APPLICATION_JSON)
+  public OncogridAnalysis getOncoGrid(
+      @ApiParam(value = "OncoGrid ID", required = true) @PathParam("oncogrid") final UUID analysisId) {
+    checkRequest(analysisId == null, "");
+
+    return service.getAnalysis(analysisId);
+  }
+
 }

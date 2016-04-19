@@ -28,7 +28,7 @@ import lombok.NonNull;
 
 @Data
 @ApiModel(value = "OncogridAnalysis")
-public class OncogridAnalysis {
+public class OncogridAnalysis implements Identifiable<UUID> {
 
   @NonNull
   private final UUID id;

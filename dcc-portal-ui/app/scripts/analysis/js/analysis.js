@@ -285,6 +285,8 @@
       } else if (type === 'phenotype') {
         payload.dataType = 'donor';
         payload.inputSetCount = analysis.inputCount || '';
+      } else if (type === 'oncogrid') {
+        payload.dataType = 'oncogrid';
       } else {
         payload.dataType = analysis.type.toLowerCase();
         payload.inputSetCount = analysis.inputCount || '';

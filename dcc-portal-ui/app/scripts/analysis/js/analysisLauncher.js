@@ -38,6 +38,11 @@
     _this.filteredSetType = '';
     _this.selectedIds = [];
     _this.selectedTypes = [];
+    
+    _this.selectedForOnco = {
+      donor: null,
+      gene: null
+    };
 
     _this.allSets = SetService.getAll();
 
@@ -55,6 +60,24 @@
         _this.selectedIds.push(setId);
       }
 
+      // Apply filer to disable irrelevant results
+      if (_this.selectedIds.length === 0) {
+        _this.filteredSetType = '';
+      }
+      _this.applyFilter(_this.analysisType);
+    };
+    
+    _this.toggleOnco = function(setId, setType) {
+      if (_this.selectedIds.indexOf(setId) >= 0) {
+        _.remove(_this.selectedIds, function(id) {
+          return id === setId;
+        });
+      } else {
+        _this.selectedIds.push(setId);
+      }
+      
+      _this.selectedForOnco[setType] = setId;
+      
       // Apply filer to disable irrelevant results
       if (_this.selectedIds.length === 0) {
         _this.filteredSetType = '';
@@ -102,7 +125,7 @@
     };
     
     _this.isValidOncoSelection = function() {
-      return _this.selectedTypes.indexOf('gene') >= 0 && _this.selectedTypes.indexOf('donor') >= 0;
+      return _this.selectedForOnco.donor !== null && _this.selectedForOnco.gene !== null;
     };
 
 
@@ -153,6 +176,7 @@
     };
     
     _this.launchOncogridAnalysis = function (setIds) {
+      console.log('Luanching OncoGrid with: ' + setIds);
       
       if (_isLaunchingAnalysis) {
         return;
@@ -160,12 +184,16 @@
 
       _isLaunchingAnalysis = true;
       
-      var payload = setIds;
+      var payload = {
+        donorSet: _this.selectedForOnco.donor,
+        geneSet: _this.selectedForOnco.gene
+      };
+      
       var promise = Restangular.one('analysis').post('oncogrid', payload, {}, {'Content-Type': 'application/json'});
       
       promise.then(function(data) {
         if (data.id) {
-          $location.path('analysis/view/analysis/' + data.id);
+          $location.path('analysis/view/oncogrid/' + data.id);
         }
       })
       .finally(function() {
