@@ -17,6 +17,7 @@
  */
 package org.icgc.dcc.portal.model;
 
+import java.util.Date;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -24,7 +25,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wordnik.swagger.annotations.ApiModel;
 
 import lombok.Data;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 @Data
 @ApiModel(value = "OncogridAnalysis")
@@ -37,14 +40,37 @@ public class OncogridAnalysis implements Identifiable<UUID> {
   @NonNull
   private final UUID donorSet;
 
+  private final long geneCount;
+  private final long donorCount;
+
+  private int version = 1;
+  private State state = State.FINISHED;
+  private final long timestamp = new Date().getTime();
+
   @JsonCreator
   public OncogridAnalysis(
       @JsonProperty("id") final UUID id,
       @JsonProperty("geneSet") final UUID geneSet,
-      @JsonProperty("donorSet") final UUID donorSet) {
+      @JsonProperty("geneCount") final long geneCount,
+      @JsonProperty("donorSet") final UUID donorSet,
+      @JsonProperty("donorCount") final long donorCount) {
     this.id = id;
     this.geneSet = geneSet;
+    this.geneCount = geneCount;
     this.donorSet = donorSet;
+    this.donorCount = donorCount;
+  }
+
+  @RequiredArgsConstructor
+  @Getter
+  public enum State {
+
+    FINISHED("finished"),
+    ERROR("error");
+
+    @NonNull
+    private final String name;
+
   }
 
 }

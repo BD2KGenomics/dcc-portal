@@ -163,7 +163,7 @@
         }
 
         if (data.state === 'FINISHED') {
-          $scope.analysisResult = null;
+          $scope.analysisResult = data;
           $timeout(function() {
             $scope.analysisResult = data;
           }, 150);
@@ -239,7 +239,7 @@
       } else if (type === 'phenotype') {
         return 'Compare phenotypes across brain, breast, and colorectal cancer donors.';
       } else if (type === 'oncogrid') {
-        return 'Coming soon...';
+        return 'Generate an OncoGrid using Male PCAWG donors with Primary Site Blood.';
       } else {
         return '';
       }
@@ -287,6 +287,8 @@
         payload.inputSetCount = analysis.inputCount || '';
       } else if (type === 'oncogrid') {
         payload.dataType = 'oncogrid';
+        payload.geneCount = analysis.geneCount;
+        payload.donorCount = analysis.donorCount
       } else {
         payload.dataType = analysis.type.toLowerCase();
         payload.inputSetCount = analysis.inputCount || '';

@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import org.icgc.dcc.portal.config.PortalProperties;
 import org.icgc.dcc.portal.model.OncogridAnalysis;
+import org.icgc.dcc.portal.repository.EntityListRepository;
 import org.icgc.dcc.portal.repository.OncogridAnalysisRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,8 @@ public class OncogridAnalysisService {
   @NonNull
   private final OncogridAnalysisRepository oncogridRepository;
   @NonNull
+  private final EntityListRepository entityListRepository;
+  @NonNull
   private final PortalProperties properties;
 
   @Getter(lazy = true, value = PRIVATE)
@@ -47,7 +50,11 @@ public class OncogridAnalysisService {
 
   public OncogridAnalysis createAnalysis(@NonNull final UUID geneSet, @NonNull final UUID donorSet) {
     val dataVersion = getCurrentDataVersion();
-    val newAnalysis = new OncogridAnalysis(UUID.randomUUID(), geneSet, donorSet);
+
+    val donorCount = entityListRepository.find(donorSet).getCount();
+    val geneCount = entityListRepository.find(geneSet).getCount();
+
+    val newAnalysis = new OncogridAnalysis(UUID.randomUUID(), geneSet, geneCount, donorSet, donorCount);
 
     val insertCount = oncogridRepository.save(newAnalysis, dataVersion);
     checkState(insertCount == 1, "Could not save analysis. Insert count: %s", insertCount);

@@ -30,7 +30,14 @@
   
   module.directive('oncogridAnalysis', function() {
     return {
-      templateUrl: '/scripts/oncogrid/views/oncogrid-analysis.html'
+      restrict: 'E',
+      scope: {
+        item: '='
+      },
+      templateUrl: '/scripts/oncogrid/views/oncogrid-analysis.html',
+      link: function($scope) {
+        console.log($scope.item);
+      }
     };
   });
   

@@ -45,7 +45,7 @@
                         <div class="analysis-tile-detail">{{NAC.analysisDescription('oncogrid')}}</div>
                     </div>
                     <div class="analysis-tile-extra">
-                        <div>Demo: <a href="" >{{NAC.analysisDemoDescription('oncogrid')}}</a></div>
+                        <div>Demo: <a href="" data-ng-click="NAC.demoOncogrid()">{{NAC.analysisDemoDescription('oncogrid')}}</a></div>
                     </div>
                 </div>
                 <div class="analysis-tile-container">
@@ -226,9 +226,10 @@
             
         </div>
         
+        <!-- OncoGrid -->
         <div data-ng-if="NAC.analysisType === 'oncogrid'">
             <div><em>{{NAC.analysisDescription('oncogrid')}}</em></div>
-            <div>Demo: <a href="" data-ng-click="NAC.demoSetOperation()">{{NAC.analysisDemoDescription('oncogrid')}}</a></div>
+            <div>Demo: <a href="" data-ng-click="NAC.demoOncogrid()">{{NAC.analysisDemoDescription('oncogrid')}}</a></div>
             
             <div> 
                 <div>Select 1 Gene set and 1 Donor set, then click on Run.</div>

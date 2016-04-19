@@ -368,6 +368,61 @@
         wait([result.id], 5, proxyLaunch);
       });
     };
+    
+    _this.demoOncogrid = function () {
+      var donorSetParams = {
+        filters: {
+          donor:{
+            primarySite: {is: ['Blood']},
+            studies: {is: ['PCAWG']},
+            gender: {is: ['male']}
+          }
+        },
+        type: 'donor',
+        isTransient: true,
+        name: 'Male Blood PCAWG Donors'
+      };
+      
+      var geneSetParams = {
+        filters: {
+          donor:{
+            primarySite: {is: ['Blood']},
+            studies: {is: ['PCAWG']},
+            gender: {is: ['male']}
+          },
+          gene: {
+            type: {is:["protein_coding"]},
+            curatedSetId:{is:["GS1"]},
+            hasPathway:true
+          },
+          mutation: {
+            functionalImpact: {is: ['High']}
+          }
+        },
+        type: 'donor',
+        isTransient: true,
+        name: 'Male Blood PCAWG Donors'
+      };
+
+      Page.startWork();
+      SetService.addSet('donor', donorSetParams).then(function (r1) {
+        SetService.addSet('gene', geneSetParams).then(function (r2) {
+          _this.selectedForOnco = {
+            donor: r1.id,
+            gene: r2.id
+          };
+
+          function proxyLaunch() {
+            Page.stopWork();
+            _this.launchOncogridAnalysis([r1.id, r2.id]);
+          }
+          wait([r1.id, r2.id], 7, proxyLaunch);
+        });
+
+      });
+      
+      
+    };
 
     _this.launchEnrichment = function(setId) {
       var set = _.filter(_this.filteredList, function(set) {
