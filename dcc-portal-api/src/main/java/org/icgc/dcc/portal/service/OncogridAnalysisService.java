@@ -51,10 +51,17 @@ public class OncogridAnalysisService {
   public OncogridAnalysis createAnalysis(@NonNull final UUID geneSet, @NonNull final UUID donorSet) {
     val dataVersion = getCurrentDataVersion();
 
-    val donorCount = entityListRepository.find(donorSet).getCount();
-    val geneCount = entityListRepository.find(geneSet).getCount();
+    val donors = entityListRepository.find(donorSet);
+    val genes = entityListRepository.find(geneSet);
 
-    val newAnalysis = new OncogridAnalysis(UUID.randomUUID(), geneSet, geneCount, donorSet, donorCount);
+    val newAnalysis = new OncogridAnalysis(
+        UUID.randomUUID(),
+        geneSet,
+        genes.getCount(),
+        genes.getName(),
+        donorSet,
+        donors.getCount(),
+        donors.getName());
 
     val insertCount = oncogridRepository.save(newAnalysis, dataVersion);
     checkState(insertCount == 1, "Could not save analysis. Insert count: %s", insertCount);

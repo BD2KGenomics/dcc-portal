@@ -4,17 +4,17 @@
         <thead>
             <tr>
                 <th>Set</th>
-                <th class="text-right">Count</th>
+                <th class="text-right"># of Entities</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>Donor Set</th>
-                <td class="text-right"><a href="">{{item.donorCount}}</a></th>
+                <td>{{item.donorSetName}}</th>
+                <td class="text-right"><a href="{{donorLink}}">{{item.donorCount}}</a></th>
             </tr>
             <tr>
-                <td>Gene Set</th>
-                <td class="text-right"><a href="">{{item.geneCount}}</a></th>
+                <td>{{item.geneSetName}}</th>
+                <td class="text-right"><a href="{{geneLink}}">{{item.geneCount}}</a></th>
             </tr>
         </tbody>
     </table>
@@ -22,6 +22,13 @@
 <div class="clearfix"></div>
 <br>
 
-<div>
-  Main grid + histograms go here
+
+<div style="margin-left: -160px;">
+    
+<div id="oncogrid-topcharts">
+</div>  
+
+<div id="oncogrid-div">
+</div>
+
 </div>

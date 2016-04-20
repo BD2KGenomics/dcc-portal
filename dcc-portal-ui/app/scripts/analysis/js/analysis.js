@@ -163,10 +163,10 @@
         }
 
         if (data.state === 'FINISHED') {
-          $scope.analysisResult = data;
+          $scope.analysisResult = null;
           $timeout(function() {
             $scope.analysisResult = data;
-          }, 150);
+          }, 250);
           return;
         }
 
@@ -288,7 +288,7 @@
       } else if (type === 'oncogrid') {
         payload.dataType = 'oncogrid';
         payload.geneCount = analysis.geneCount;
-        payload.donorCount = analysis.donorCount
+        payload.donorCount = analysis.donorCount;
       } else {
         payload.dataType = analysis.type.toLowerCase();
         payload.inputSetCount = analysis.inputCount || '';

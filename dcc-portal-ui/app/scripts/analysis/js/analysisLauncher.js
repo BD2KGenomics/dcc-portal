@@ -176,7 +176,7 @@
     };
     
     _this.launchOncogridAnalysis = function (setIds) {
-      console.log('Luanching OncoGrid with: ' + setIds);
+      console.log('Launching OncoGrid with: ' + setIds);
       
       if (_isLaunchingAnalysis) {
         return;
@@ -391,8 +391,8 @@
             gender: {is: ['male']}
           },
           gene: {
-            type: {is:["protein_coding"]},
-            curatedSetId:{is:["GS1"]},
+            type: {is:['protein_coding']},
+            curatedSetId:{is:['GS1']},
             hasPathway:true
           },
           mutation: {
@@ -401,7 +401,7 @@
         },
         type: 'donor',
         isTransient: true,
-        name: 'Male Blood PCAWG Donors'
+        name: 'High Impact Mutation Genes'
       };
 
       Page.startWork();
