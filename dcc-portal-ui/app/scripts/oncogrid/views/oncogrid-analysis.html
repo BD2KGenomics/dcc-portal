@@ -1,5 +1,6 @@
 <div>Your selected Sets</div>
 <div class="wide">
+    
     <table class="table">
         <thead>
             <tr>
@@ -22,13 +23,30 @@
 <div class="clearfix"></div>
 <br>
 
+<h1 id="oncogrid-spinner" class="text-center" style="margin-left: -160px; display: block;">
+    <i class="icon-spinner icon-spin" style="font-size:5rem"></i>
+</h1>
+
+<div id="oncogrid-controls">
+    <div class="dropdown">
+        <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            Grid Controls
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+            <li><a href="#" ng-click="removeCleanDonors()">Remove Donors With No Mutations</a></li>
+            <li><a href="#" ng-click="removeCleanGenes()">Remove Genes With No Mutations</a></li>
+            <li><a href="#" ng-click="clusterData()">Cluster Data</a></li>
+            <li><a href="#"  ng-click="heatMap()">Toggle Heatmap</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a href="#" ng-click="sortByAge()">Sort By Age</a></li>
+        </ul>
+    </div>
+</div>
 
 <div style="margin-left: -160px;">
     
-<div id="oncogrid-topcharts">
-</div>  
+    <div id="oncogrid-topcharts"></div>  
 
-<div id="oncogrid-div">
-</div>
-
+    <div id="oncogrid-div"></div>
 </div>
