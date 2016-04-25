@@ -1,4 +1,23 @@
-var oncogrid = (function (d3) {
+/*
+ * Copyright 2016(c) The Ontario Institute for Cancer Research. All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the terms of the GNU Public
+ * License v3.0. You should have received a copy of the GNU General Public License along with this
+ * program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+ * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+'use strict';
+
+var oncogrid = (function (d3, oncogrid) {
 
   return function (params) {
     var _self = this;
@@ -20,7 +39,8 @@ var oncogrid = (function (d3) {
         };
 
     _self.width = params.width;
-    _self.width = params.height;
+    _self.height = params.height;
+
 
     /**
      * Returns 1 if at least one mutation, 0 otherwise.
@@ -283,7 +303,7 @@ var oncogrid = (function (d3) {
       });
       drag.on('drag', function(d) {
         var trans = d3.event.dy;
-        var dragged = genes.indexOf(d);
+        var dragged = _self.genes.indexOf(d);
         var selection = d3.select(this);
 
         selection.attr('transform', function() {
@@ -294,21 +314,21 @@ var oncogrid = (function (d3) {
         var newY = d3.transform(d3.select(this).attr('transform')).translate[1];
 
         d3.selectAll('.row').each(function(f) {
-          var curGeneIndex = genes.indexOf(f);
+          var curGeneIndex = _self.genes.indexOf(f);
           var curGene, yCoord;
           if (trans > 0 && curGeneIndex > dragged) {
             yCoord = d3.transform(d3.select(this).attr('transform')).translate[1];
             if (newY > yCoord) {
-              curGene = genes[dragged];
-              genes[dragged] = genes[curGeneIndex];
-              genes[curGeneIndex] = curGene;
+              curGene = _self.genes[dragged];
+              _self.genes[dragged] = _self.genes[curGeneIndex];
+              _self.genes[curGeneIndex] = curGene;
             }
           } else if (trans < 0 && curGeneIndex < dragged) {
             yCoord = d3.transform(d3.select(this).attr('transform')).translate[1];
             if (newY < yCoord) {
-              curGene = genes[dragged];
-              genes[dragged] = genes[curGeneIndex];
-              genes[curGeneIndex] = curGene;
+              curGene = _self.genes[dragged];
+              _self.genes[dragged] = _self.genes[curGeneIndex];
+              _self.genes[curGeneIndex] = curGene;
             }
           }
         });
@@ -555,4 +575,4 @@ var oncogrid = (function (d3) {
     return _self;
   };
 
-}(d3));
+}(d3, oncogrid || {}));

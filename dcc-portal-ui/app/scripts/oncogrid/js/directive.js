@@ -23,7 +23,7 @@
 })();
 
 
-(function ($) {
+(function ($, oncogrid) {
   'use strict';
 
   var module = angular.module('icgc.oncogrid.directives', []);
@@ -105,7 +105,11 @@
 
         function initOnco() {
 
-          var donors = _.map($scope.donors, function (d) { return { 'donorId': d.id, 'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis) }; });
+          var donors = _.map($scope.donors,
+              function (d) {
+                return { 'donorId': d.id, 'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis) };
+              });
+          
           var genes = _.map($scope.genes, function (g) { return { 'id': g.id, 'symbol': g.symbol }; });
 
           var donorIds = _.map($scope.donors, function (g) { return g.id; });
@@ -118,11 +122,15 @@
           }).value();
 
           var params = {
+            donors: donors,
+            genes: genes,
+            observations: observations,
+            element: '#oncogrid-div',
             height: 400,
             width: 700
           };
 
-          $scope.grid = window.oncogrid(donors, genes, observations, '#oncogrid-div', params);
+          $scope.grid = new oncogrid(params);
           $scope.grid.init();
           $scope.grid.heatMap = true;
           $scope.grid.renderFirst();
@@ -180,4 +188,4 @@
     };
   });
 
-})(jQuery);
+})(jQuery, oncogrid);
