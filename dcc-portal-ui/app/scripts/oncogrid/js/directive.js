@@ -23,7 +23,7 @@
 })();
 
 
-(function ($, oncogrid) {
+(function ($, OncoGrid) {
   'use strict';
 
   var module = angular.module('icgc.oncogrid.directives', []);
@@ -126,14 +126,13 @@
             genes: genes,
             observations: observations,
             element: '#oncogrid-div',
-            height: 400,
-            width: 700
+            height: 400, 
+            width: 700,
+            heatMap: true
           };
 
-          $scope.grid = new oncogrid(params);
-          $scope.grid.init();
-          $scope.grid.heatMap = true;
-          $scope.grid.renderFirst();
+          $scope.grid = new OncoGrid(params);
+          $scope.grid.render();
         }
 
         $scope.$watch('item', function (n) {
@@ -188,4 +187,4 @@
     };
   });
 
-})(jQuery, oncogrid);
+})(jQuery, OncoGrid);
