@@ -60,6 +60,7 @@
     "histogramD3": false,
     "donutD3": false,
     "Bam": false,
-    "iobioGoogleAnalytics": false
+    "iobioGoogleAnalytics": false,
+    "OncoGrid": false
   }
 }

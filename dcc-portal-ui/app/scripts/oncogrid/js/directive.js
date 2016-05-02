@@ -92,6 +92,11 @@
                 id: {
                   is: ['ES:' + $scope.geneSet]
                 }
+              },
+              mutation: {
+                functionalImpact: {
+                  is : ['High']
+                }
               }
             },
             from: 1,
@@ -107,7 +112,7 @@
 
           var donors = _.map($scope.donors,
               function (d) {
-                return { 'donorId': d.id, 'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis) };
+                return { 'id': d.id, 'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis) };
               });
           
           var genes = _.map($scope.genes, function (g) { return { 'id': g.id, 'symbol': g.symbol }; });
@@ -116,9 +121,9 @@
           var geneIds = _.map($scope.genes, function (d) { return d.id; });
 
           var observations = _($scope.occurrences).map(function (o) {
-            return { id: o.mutationId, donorId: o.donorId, gene: o.geneId, consequence: o.consequenceType };
+            return { id: o.mutationId, donorId: o.donorId, geneId: o.geneId, consequence: o.consequenceType };
           }).filter(function (o) {
-            return geneIds.indexOf(o.gene) > 0 && donorIds.indexOf(o.donorId) > 0;
+            return geneIds.indexOf(o.geneId) > 0 && donorIds.indexOf(o.donorId) > 0;
           }).value();
 
           var params = {

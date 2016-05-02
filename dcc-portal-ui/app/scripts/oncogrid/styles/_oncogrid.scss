@@ -1,3 +1,7 @@
+$border: $tooltipBorder;
+$fill: $tooltipFill;
+$shadowColor: $tooltipShadowColor;
+
 #oncogrid-div {
     .background {
       fill: #f2f2f2;
@@ -33,16 +37,21 @@
       
     }
     
-    div.tooltip {	
-      position: absolute;			
-      text-align: center;			
-      width: 60px;					
-      height: 36px;					
-      padding: 2px;				
-      font: 10px sans-serif;		
-      background: lightblue;	
-      border: 0px;		
-      border-radius: 8px;			
-      pointer-events: none;			
+    div.og-tooltip-oncogrid {
+      font-weight: 300;
+      position: absolute;
+      z-index: 100001;
+      display: block;
+      visibility: visible;
+      font-size: .9rem;
+      pointer-events: none;
+      line-height: 1.6rem;
+      border: 1px solid $border;
+      background-color: $fill;
+      border-radius: 3px;
+      -webkit-filter: drop-shadow(0 1px 3px $shadowColor);
+      -moz-box-shadow: 0 1px 3px $shadowColor;
+      filter: drop-shadow(0 1px 3px $shadowColor);
+      padding: 5px;
   }
 }
