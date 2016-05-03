@@ -24,7 +24,7 @@ import java.util.UUID;
 
 import org.icgc.dcc.portal.config.PortalProperties;
 import org.icgc.dcc.portal.model.OncogridAnalysis;
-import org.icgc.dcc.portal.repository.EntityListRepository;
+import org.icgc.dcc.portal.repository.EntitySetRepository;
 import org.icgc.dcc.portal.repository.OncogridAnalysisRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,7 @@ public class OncogridAnalysisService {
   @NonNull
   private final OncogridAnalysisRepository oncogridRepository;
   @NonNull
-  private final EntityListRepository entityListRepository;
+  private final EntitySetRepository entitySetRepository;
   @NonNull
   private final PortalProperties properties;
 
@@ -51,8 +51,8 @@ public class OncogridAnalysisService {
   public OncogridAnalysis createAnalysis(@NonNull final UUID geneSet, @NonNull final UUID donorSet) {
     val dataVersion = getCurrentDataVersion();
 
-    val donors = entityListRepository.find(donorSet);
-    val genes = entityListRepository.find(geneSet);
+    val donors = entitySetRepository.find(donorSet);
+    val genes = entitySetRepository.find(geneSet);
 
     val newAnalysis = new OncogridAnalysis(
         UUID.randomUUID(),

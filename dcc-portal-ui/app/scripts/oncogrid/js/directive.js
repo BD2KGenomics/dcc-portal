@@ -106,7 +106,7 @@
           });
 
           return $q.all([donorPromise, genePromise, occurrencePromise]);
-        }
+        };
 
         $scope.initOnco =  function() {
 
@@ -170,7 +170,7 @@
 
           $scope.grid = new OncoGrid(params);
           $scope.grid.render();
-        }
+        };
 
         $scope.$watch('item', function (n) {
           if (n) {
