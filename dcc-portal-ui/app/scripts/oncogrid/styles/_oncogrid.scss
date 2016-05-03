@@ -54,4 +54,39 @@ $shadowColor: $tooltipShadowColor;
       filter: drop-shadow(0 1px 3px $shadowColor);
       padding: 5px;
   }
+  
+  rect {
+    &.og-track-age {
+      fill: #638f56;
+    }
+    
+    &.og-track-vitalStatus {
+      &.og-track-true {
+        fill: #1693c0;
+      }
+      
+      &.og-track-false {
+        fill: darkred;
+      }
+    }
+    
+    &.og-track-sex {
+      &.og-track-male {
+        fill: #420692;
+      }
+      
+      &.og-track-female {
+        fill: rgb(220, 96, 156);
+      }
+    }
+    
+    &.og-track-cnsmExists {
+      fill: #e9931c;
+    }
+    
+    &.og-track-stsmExists {
+      fill: darkslategrey;
+    }
+  }
+  
 }

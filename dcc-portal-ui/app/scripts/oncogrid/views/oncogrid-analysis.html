@@ -28,20 +28,31 @@
 </h1>
 
 <div id="oncogrid-controls">
-    <div class="dropdown">
-        <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-            Grid Controls
-            <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-            <li><a href="#" ng-click="removeCleanDonors()">Remove Donors With No Mutations</a></li>
-            <li><a href="#" ng-click="removeCleanGenes()">Remove Genes With No Mutations</a></li>
-            <li><a href="#" ng-click="clusterData()">Cluster Data</a></li>
-            <li><a href="#"  ng-click="heatMap()">Toggle Heatmap</a></li>
-            <li role="separator" class="divider"></li>
-            <li><a href="#" ng-click="sortByAge()">Sort By Age</a></li>
-        </ul>
-    </div>
+    <table>
+        <tr>
+            <td>
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        Grid Controls
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                        <li><a href="#" ng-click="removeCleanDonors()">Remove Donors With No Mutations</a></li>
+                        <li><a href="#" ng-click="removeCleanGenes()">Remove Genes With No Mutations</a></li>
+                        <li><a href="#" ng-click="clusterData()">Cluster Data</a></li>
+                        <li><a href="#"  ng-click="heatMap()">Toggle Heatmap</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="#" ng-click="sortByAge()">Sort By Age</a></li>
+                    </ul>
+                </div>
+    
+            </td><td>
+                <div style="display:inline;">
+                    <button class="btn btn-default" data-ng-click="printGrid()">Print OncoGrid</button>
+                </div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 <div style="margin-left: -160px;">

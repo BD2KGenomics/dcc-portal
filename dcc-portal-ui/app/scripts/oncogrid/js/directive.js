@@ -112,7 +112,14 @@
 
           var donors = _.map($scope.donors,
               function (d) {
-                return { 'id': d.id, 'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis) };
+                return { 
+                  'id': d.id,
+                  'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis),
+                  'sex': (d.gender === undefined ? 'unknown' : d.gender),
+                  'vitalStatus': (d.vitalStatus === undefined? false : (d.vitalStatus === 'alive' ? true : false)),
+                  'cnsmExists': d.cnsmExists,
+                  'stsmExists': d.stsmExists
+                };
               });
           
           var genes = _.map($scope.genes, function (g) { return { 'id': g.id, 'symbol': g.symbol }; });
@@ -126,6 +133,28 @@
             return geneIds.indexOf(o.geneId) > 0 && donorIds.indexOf(o.donorId) > 0;
           }).value();
 
+          var donorTracks = [
+            { 'name': 'Age at Diagnosis', 'fieldName': 'age', 'type': 'int' },
+            { 'name': 'Vital Status', 'fieldName': 'vitalStatus', 'type': 'vital' },
+            { 'name': 'Sex', 'fieldName': 'sex', 'type': 'sex' },
+            { 'name': 'CNSM Exists', 'fieldName': 'cnsmExists', 'type': 'bool'},
+            { 'name': 'STSM Exists', 'fieldName': 'stsmExists', 'type': 'bool'}
+          ];
+
+          var donorOpacity = function (d) {
+            if (d.type === 'int') {
+              return d.value / 100;
+            } else if (d.type === 'vital') {
+              return 1;
+            } else if (d.type === 'sex') {
+              return 1;
+            } else if (d.type === 'bool') {
+              return d.value ? 1 : 0;
+            } else {
+              return 0;
+            }
+          };
+
           var params = {
             donors: donors,
             genes: genes,
@@ -133,7 +162,10 @@
             element: '#oncogrid-div',
             height: 400, 
             width: 700,
-            heatMap: true
+            heatMap: true,
+            trackHeight: 15,
+            donorTracks: donorTracks,
+            donorOpacityFunc: donorOpacity
           };
 
           $scope.grid = new OncoGrid(params);
@@ -182,6 +214,12 @@
 
         $scope.heatMap = function () {
           $scope.grid.toggleHeatmap();
+        };
+        
+        $scope.printGrid = function () {
+          var gridDiv = document.getElementById('oncogrid-div').outerHTML;
+          document.body.innerHTML = gridDiv;
+          window.print();
         };
 
         $scope.$on('$destroy', function () {
