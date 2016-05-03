@@ -66,12 +66,12 @@
           $scope.geneLink = geneLink;
         }
 
-        function materializeSets() {
-          var donorPromise = Donors.getList({
+        $scope.materializeSets = function() {
+          var donorPromise = Donors.getAll({
             filters: $scope.donorFilter,
             size: 100
           }).then(function (data) {
-            $scope.donors = data.hits;
+            $scope.donors = data;
           });
 
           var genePromise = Genes.getList({
@@ -108,7 +108,7 @@
           return $q.all([donorPromise, genePromise, occurrencePromise]);
         }
 
-        function initOnco() {
+        $scope.initOnco =  function() {
 
           var donors = _.map($scope.donors,
               function (d) {
@@ -179,9 +179,9 @@
             }
             $('#oncogrid-spinner').toggle(true);
             createLinks();
-            materializeSets().then(function () {
+            $scope.materializeSets().then(function () {
               $('#oncogrid-spinner').toggle(false);
-              initOnco();
+              $scope.initOnco();
             });
           }
         });
