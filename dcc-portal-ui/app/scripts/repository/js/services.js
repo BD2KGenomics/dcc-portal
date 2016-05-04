@@ -92,10 +92,11 @@
         size: 10,
         from:1
       };
-      
+
       var precedence = [
           'AWS - Virginia',
           'Collaboratory',
+          'EGA - United Kingdom',
           'PCAWG - Barcelona',
           'PCAWG - Chicago (ICGC)',
           'PCAWG - Chicago (TCGA)',
@@ -104,17 +105,18 @@
           'PCAWG - Santa Cruz',
           'PCAWG - Seoul',
           'PCAWG - Tokyo',
+          'EGA - United Kingdom',
           'CGHub - Santa Cruz',
           'TCGA DCC - Bethesda'
       ];
-      
+
       return Restangular.one (REPO_API_PATH).get (angular.extend (defaults, params)).then(function (data) {
         if (data.termFacets.hasOwnProperty('repoName') && data.termFacets.repoName.hasOwnProperty('terms')) {
           data.termFacets.repoName.terms = data.termFacets.repoName.terms.sort(function (a, b) {
             return precedence.indexOf(a.term) - precedence.indexOf(b.term);
           });
         }
-        
+
         return data;
       });
     };
@@ -139,13 +141,13 @@
 
 
     _srv.download = function (filters, repos) {
-      $window.location.href = API.BASE_URL + '/' + REPO_API_PATH + '/manifest?filters=' +
+      $window.location.href = API.BASE_URL + '/manifests?filters=' +
         uriString (filters) + '&repositories=' + _concatRepoCodes (repos);
     };
 
     _srv.downloadSelected = function (ids, repos) {
       jQuery('<form method="POST" id="fileDownload" action="' +
-              API.BASE_URL + '/' + REPO_API_PATH + '/manifest" style="display:none">' +
+              API.BASE_URL + '/manifests" style="display:none">' +
              _.map (ids, function (id) {
                 return '<input type="hidden" name="fileIds" value="' + id + '"/>';
               }) +

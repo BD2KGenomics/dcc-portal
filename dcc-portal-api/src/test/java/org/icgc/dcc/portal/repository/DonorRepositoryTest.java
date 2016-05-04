@@ -56,7 +56,6 @@ import com.google.common.collect.Sets;
 import lombok.val;
 
 @RunWith(MockitoJUnitRunner.class)
-
 public class DonorRepositoryTest extends BaseElasticSearchTest {
 
   private static final String DEFAULT_SORT = "ssmAffectedGenes";
@@ -70,7 +69,7 @@ public class DonorRepositoryTest extends BaseElasticSearchTest {
 
   DonorRepository donorRepository;
   @Mock
-  EntityListRepository entityListRepository;
+  EntitySetRepository entitySetRepository;
 
   ImmutableMap<String, String> FIELDS = FIELDS_MAPPING.get(Kind.DONOR);
 
@@ -78,15 +77,15 @@ public class DonorRepositoryTest extends BaseElasticSearchTest {
   public void setUp() throws Exception {
     this.testIndex = TestIndex.RELEASE;
     val set = new EntitySet(UUID.randomUUID(), State.FINISHED, 200l, "test", "test", BaseEntitySet.Type.DONOR, 1);
-    Mockito.when(entityListRepository.find(Matchers.any())).thenReturn(set);
+    Mockito.when(entitySetRepository.find(Matchers.any())).thenReturn(set);
 
     es.execute(createIndexMappings(Type.DONOR, Type.DONOR_CENTRIC)
         .withData(bulkFile(getClass()))
         // This is needed because the DonorRepository now does a 'secondary' search on icgc-repository index.
-        .withData(bulkFile("RepositoryFileServiceTest.json")));
+        .withData(MANIFEST_TEST_DATA));
     donorRepository =
         new DonorRepository(es.client(), testIndex.getModel(), new QueryEngine(es.client(), testIndex.getName()),
-            entityListRepository);
+            entitySetRepository);
   }
 
   @Test

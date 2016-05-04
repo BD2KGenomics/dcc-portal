@@ -23,7 +23,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Setter;
 
 import org.icgc.dcc.portal.config.PortalProperties.DownloadProperties;
-import org.icgc.dcc.portal.resource.DownloadResource;
+import org.icgc.dcc.portal.resource.core.DownloadResource;
 import org.icgc.dcc.portal.service.NotAvailableException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
