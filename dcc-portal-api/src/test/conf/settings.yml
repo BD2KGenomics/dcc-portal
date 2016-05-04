@@ -114,7 +114,6 @@ download:
   dynamicRootPath: "/download/dynamic/r12"
   staticRootPath: "/download/static"
   currentReleaseSymlink: "/current /r12"
-  maxUsers: 16
   stage: "DEVELOPMENT"
 
 web:

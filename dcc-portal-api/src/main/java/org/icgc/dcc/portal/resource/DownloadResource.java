@@ -18,7 +18,6 @@
 package org.icgc.dcc.portal.resource;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.net.HttpHeaders.ACCEPT_RANGES;
 import static com.google.common.net.HttpHeaders.CONTENT_DISPOSITION;
 import static com.google.common.net.HttpHeaders.CONTENT_LENGTH;
@@ -29,27 +28,18 @@ import static java.lang.Integer.parseInt;
 import static java.lang.Long.parseLong;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.ok;
-import static org.icgc.dcc.downloader.core.DataType.CNSM;
-import static org.icgc.dcc.downloader.core.DataType.DONOR;
-import static org.icgc.dcc.downloader.core.DataType.DONOR_EXPOSURE;
-import static org.icgc.dcc.downloader.core.DataType.DONOR_FAMILY;
-import static org.icgc.dcc.downloader.core.DataType.DONOR_THERAPY;
-import static org.icgc.dcc.downloader.core.DataType.EXP_ARRAY;
-import static org.icgc.dcc.downloader.core.DataType.EXP_SEQ;
-import static org.icgc.dcc.downloader.core.DataType.JCN;
-import static org.icgc.dcc.downloader.core.DataType.METH_ARRAY;
-import static org.icgc.dcc.downloader.core.DataType.METH_SEQ;
-import static org.icgc.dcc.downloader.core.DataType.MIRNA_SEQ;
-import static org.icgc.dcc.downloader.core.DataType.PEXP;
-import static org.icgc.dcc.downloader.core.DataType.SAMPLE;
-import static org.icgc.dcc.downloader.core.DataType.SGV_CONTROLLED;
-import static org.icgc.dcc.downloader.core.DataType.SPECIMEN;
-import static org.icgc.dcc.downloader.core.DataType.SSM_CONTROLLED;
-import static org.icgc.dcc.downloader.core.DataType.SSM_OPEN;
-import static org.icgc.dcc.downloader.core.DataType.STSM;
+import static org.elasticsearch.common.collect.Maps.immutableEntry;
+import static org.icgc.dcc.common.core.util.stream.Collectors.toImmutableList;
+import static org.icgc.dcc.common.core.util.stream.Collectors.toImmutableMap;
+import static org.icgc.dcc.common.core.util.stream.Collectors.toImmutableSet;
+import static org.icgc.dcc.portal.util.JsonUtils.parseDownloadDataTypeNames;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -63,9 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Future;
 
-import javax.annotation.Nullable;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -80,21 +68,23 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.StreamingOutput;
 
 import lombok.Cleanup;
-import lombok.Data;
 import lombok.val;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.validator.routines.EmailValidator;
-import org.icgc.dcc.downloader.client.DownloaderClient;
-import org.icgc.dcc.downloader.client.ExportedDataFileSystem;
-import org.icgc.dcc.downloader.client.ExportedDataFileSystem.AccessPermission;
-import org.icgc.dcc.downloader.core.ArchiveJobManager.JobProgress;
-import org.icgc.dcc.downloader.core.ArchiveJobManager.JobStatus;
-import org.icgc.dcc.downloader.core.DataType;
-import org.icgc.dcc.downloader.core.FileInfo;
-import org.icgc.dcc.downloader.core.SelectionEntry;
+import org.icgc.dcc.download.client.DownloadClient;
+import org.icgc.dcc.download.client.io.DownloadFileSystem;
+import org.icgc.dcc.download.core.model.DownloadDataType;
+import org.icgc.dcc.download.core.model.JobProgress;
+import org.icgc.dcc.download.core.model.TaskProgress;
+import org.icgc.dcc.portal.config.PortalProperties.DownloadProperties;
+import org.icgc.dcc.portal.download.ControlledAccessPredicate;
+import org.icgc.dcc.portal.download.DownloadDataTypes;
+import org.icgc.dcc.portal.download.JobInfo;
+import org.icgc.dcc.portal.download.OpenAccessPredicate;
+import org.icgc.dcc.portal.download.ServiceStatus;
+import org.icgc.dcc.portal.model.FileInfo;
 import org.icgc.dcc.portal.model.FiltersParam;
 import org.icgc.dcc.portal.model.IdsParam;
 import org.icgc.dcc.portal.model.Query;
@@ -104,14 +94,12 @@ import org.icgc.dcc.portal.service.DonorService;
 import org.icgc.dcc.portal.service.ForbiddenAccessException;
 import org.icgc.dcc.portal.service.NotFoundException;
 import org.icgc.dcc.portal.service.ServiceUnavailableException;
-import org.icgc.dcc.portal.util.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
@@ -139,7 +127,6 @@ public class DownloadResource {
   // Additional states for UI
   private static final String FOUND_STATUS = "FOUND";
   private static final String NOT_FOUND_STATUS = "NOT_FOUND";
-  private static final String EXPIRED_STATUS = "EXPIRED";
 
   private static final String INDIVIDUAL_TYPE_ARCHIVE_EXTENSION = ".tsv.gz";
   private static final String FULL_ARCHIVE_EXTENSION = ".tar";
@@ -148,335 +135,186 @@ public class DownloadResource {
    * Dependencies.
    */
   private final DonorService donorService;
-  private final DownloaderClient downloader;
-  private final ExportedDataFileSystem fs;
+  private final DownloadFileSystem fs;
+  private final DownloadClient downloadClient;
+  private final String defaultEmail;
 
   /**
    * Configuration.
    */
   private final Stage env;
 
-  private final static ImmutableMap<DataType, List<DataType>> DataTypeGroupMap = ImmutableMap
-      .<DataType, List<DataType>> builder()
-      .put(SSM_OPEN, ImmutableList.of(SSM_OPEN))
-      .put(SSM_CONTROLLED, ImmutableList.of(SSM_CONTROLLED))
-      .put(DONOR, ImmutableList.of(DONOR, DONOR_EXPOSURE, DONOR_FAMILY, DONOR_THERAPY, SPECIMEN, SAMPLE))
-      .put(CNSM, ImmutableList.of(CNSM))
-      .put(JCN, ImmutableList.of(JCN))
-      .put(METH_ARRAY, ImmutableList.of(METH_ARRAY))
-      .put(METH_SEQ, ImmutableList.of(METH_SEQ))
-      .put(MIRNA_SEQ, ImmutableList.of(MIRNA_SEQ))
-      .put(STSM, ImmutableList.of(STSM))
-      .put(PEXP, ImmutableList.of(PEXP))
-      .put(SGV_CONTROLLED, ImmutableList.of(SGV_CONTROLLED))
-      .put(EXP_ARRAY, ImmutableList.of(EXP_ARRAY))
-      .put(EXP_SEQ, ImmutableList.of(EXP_SEQ))
-      .build();
-
-  private final static class AccessControl {
-
-    private final static Map<String, DataType> PublicAccessibleMap = ImmutableMap.<String, DataType> builder()
-        .put(SSM_OPEN.name, SSM_OPEN)
-        .put(DONOR.name, DONOR)
-        .put(CNSM.name, CNSM)
-        .put(JCN.name, JCN)
-        .put(METH_SEQ.name, METH_SEQ)
-        .put(METH_ARRAY.name, METH_ARRAY)
-        .put(MIRNA_SEQ.name, MIRNA_SEQ)
-        .put(STSM.name, STSM)
-        .put(PEXP.name, PEXP)
-        .put(EXP_ARRAY.name, EXP_ARRAY)
-        .put(EXP_SEQ.name, EXP_SEQ)
-        .build();
-
-    private final static Set<DataType> PublicAccessibleDataTypes = ImmutableSet.copyOf(PublicAccessibleMap.values());
-
-    private final static Map<String, DataType> PrivateAccessibleMap = ImmutableMap
-        .<String, DataType> builder()
-        .put(SSM_CONTROLLED.name, SSM_CONTROLLED)
-        .put(DONOR.name, DONOR)
-        .put(CNSM.name, CNSM)
-        .put(JCN.name, JCN)
-        .put(METH_SEQ.name, METH_SEQ)
-        .put(METH_ARRAY.name, METH_ARRAY)
-        .put(MIRNA_SEQ.name, MIRNA_SEQ)
-        .put(STSM.name, STSM)
-        .put(PEXP.name, PEXP)
-        .put(EXP_ARRAY.name, EXP_ARRAY)
-        .put(EXP_SEQ.name, EXP_SEQ)
-        .put(SGV_CONTROLLED.name, SGV_CONTROLLED)
-        .build();
-
-    private final static Set<DataType> PrivateAccessibleDataTypes = ImmutableSet
-        .copyOf(PrivateAccessibleMap.values());
-
-    private final static Set<DataType> FullAccessibleDataTypes = ImmutableSet.<DataType> builder()
-        .addAll(PrivateAccessibleDataTypes)
-        .addAll(PublicAccessibleDataTypes)
-        .build();
-  }
-
-  @ApiOperation("Get download service availability")
-  @Path("/status")
-  @Produces(APPLICATION_JSON)
-  @GET
-  @Timed
-  public ServiceStatus getServiceStatus() {
-    return new ServiceStatus(downloader.isServiceAvailable() && !downloader.isOverCapacity());
-  }
-
   @Autowired
-  public DownloadResource(DonorService donorService, DownloaderClient downloader, ExportedDataFileSystem fs, Stage env) {
+  public DownloadResource(DonorService donorService, DownloadFileSystem fs, Stage env, DownloadClient downloadClient,
+      DownloadProperties properties) {
     this.donorService = donorService;
-    this.downloader = downloader;
     this.fs = fs;
     this.env = env;
+    this.downloadClient = downloadClient;
+    this.defaultEmail = properties.getSupportEmailAddress();
     log.debug("Download Resource in {} mode", env);
   }
 
-  @ApiOperation("Submit job to request archive generation")
-  @Path("/submit")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
+  @Produces(APPLICATION_JSON)
+  @Path("/status")
+  @ApiOperation("Get download service availability")
+  public ServiceStatus getServiceStatus() {
+    return new ServiceStatus(downloadClient.isServiceAvailable());
+  }
+
+  @GET
+  @Timed
+  @Path("/submit")
+  @Produces(APPLICATION_JSON)
+  @ApiOperation("Submit job to request archive generation")
   public JobInfo submitJob(
       @Auth(required = false) User user,
-
       @ApiParam(value = "Filter the search results", required = false) @QueryParam("filters") @DefaultValue("{}") FiltersParam filters,
-
       @ApiParam(value = "Archive param") @QueryParam("info") @DefaultValue("") String info,
-
       @ApiParam(value = "user email address", required = false, access = "internal") @QueryParam("email") @DefaultValue("") String email,
-
       @ApiParam(value = "download url", required = false, access = "internal") @QueryParam("downloadUrl") @DefaultValue("") String downloadUrl,
-
       @ApiParam(value = "UI representation of the filter string", required = false, access = "internal") @QueryParam("uiQueryStr") @DefaultValue("{}") String uiQueryStr
-
       ) {
-
-    boolean isLogin = isLogin(user);
-
-    // dynamic download
-    if (!downloader.isServiceAvailable() || downloader.isOverCapacity()) throw new ServiceUnavailableException(
-        "Downloader is disabled");
-    Set<String> donorIds = donorService.findIds(Query.builder().filters(filters.get()).build());
-
-    if (donorIds.isEmpty()) {
-      log.error("No donor ids found for filter: {}", filters);
-      throw new NotFoundException("no donor found", "download");
-    }
-
-    log.info("Number of donors to be retrieved: {}", donorIds.size());
-    List<SelectionEntry<String, String>> typeInfo = JsonUtils.parseListEntry(info);
-
-    final Map<String, DataType> allowedDataTypeMap =
-        isLogin ? AccessControl.PrivateAccessibleMap : AccessControl.PublicAccessibleMap;
-
-    ImmutableMap.Builder<String, String> jobInfoBuilder = ImmutableMap.builder();
-    jobInfoBuilder.put("filter", filters.toString());
-    jobInfoBuilder.put("uiQueryStr", uiQueryStr);
-    jobInfoBuilder.put("startTime", String.valueOf(System.currentTimeMillis()));
-    jobInfoBuilder.put("hasEmail", String.valueOf(!email.equals("")));
-    jobInfoBuilder.put(IS_CONTROLLED, String.valueOf(isLogin));
+    ensureServiceRunning();
+    val donorIds = resolveDonorIds(filters);
 
     try {
-      List<SelectionEntry<DataType, String>> filterTypeInfo = newArrayList();
-      for (SelectionEntry<String, String> selection : typeInfo) {
-        DataType dataType = allowedDataTypeMap.get(selection.getKey().toLowerCase());
-        if (dataType == null) throw new NotFoundException(selection.getKey(), "download");
+      val jobInfo = org.icgc.dcc.download.core.model.JobInfo.builder()
+          .filter(filters.toString())
+          .email(email.equals("") ? defaultEmail : email)
+          .isControlled(isAuthorized(user))
+          .startTime(currentTimeMillis())
+          .uiQueryStr(uiQueryStr)
+          .build();
 
-        Map<DataType, Future<Long>> result = downloader.getSizes(donorIds);
+      val downloadId = downloadClient.submitJob(
+          donorIds,
+          resolveDownloadDataTypes(user, info),
+          jobInfo,
+          email);
 
-        for (DataType type : DataTypeGroupMap.get(dataType)) {
-          if (result.get(type).get() > 0) {
-            filterTypeInfo.add(new SelectionEntry<DataType, String>(type, selection
-                .getValue()));
-          }
-        }
-      }
-
-      if (!EmailValidator.getInstance().isValid(email)) {
-        return new JobInfo(downloader.submitJob(donorIds,
-            filterTypeInfo, jobInfoBuilder.build(), downloadUrl));
-      } else {
-        return new JobInfo(downloader.submitJob(donorIds,
-            filterTypeInfo, jobInfoBuilder.build(), email, downloadUrl));
-      }
+      return new JobInfo(downloadId);
     } catch (Exception e) {
       log.error("Job submission failed.", e);
       throw new NotFoundException("Sorry, job submission failed.", "download");
     }
   }
 
-  @ApiOperation("Cancel a download job associated with the supplied 'download id'")
-  @Path("/{downloadId}/cancel")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
+  @Produces(APPLICATION_JSON)
+  @Path("/{downloadId}/cancel")
+  @ApiOperation("Cancel a download job associated with the supplied 'download id'")
   public Map<String, Object> cancelJob(
       @Auth(required = false) User user,
-
       @ApiParam(value = "download id") @PathParam("downloadId") String downloadId) throws BadRequestException {
-    try {
-      Map<String, Map<String, String>> jobInfoMap = downloader.getJobInfo(ImmutableSet.of(downloadId));
-      boolean isControlled = containsControlledData(jobInfoMap);
-      if (isPermissionDenied(user, isControlled)) {
-        throw new ForbiddenAccessException("Unauthorized access", "download");
-      } else {
-        return standardizeStatus(downloadId, downloader.cancelJob(downloadId));
-      }
-    } catch (IOException e) {
-      log.error("fail to cancel the job with id: {}", downloadId, e);
-      throw new BadRequestException("fail to cancel the job with id: " + downloadId);
-    }
+    ensureResoucesAccessPermissions(user, ImmutableSet.of(downloadId));
+    val jobProgress = downloadClient.getJobsProgress(ImmutableSet.of(downloadId));
+    downloadClient.cancelJob(downloadId);
+
+    return standardizeStatus(downloadId, jobProgress.get(downloadId));
   }
 
-  @ApiOperation("Get download service availability")
-  @Path("/{downloadIds}/status")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
+  @Produces(APPLICATION_JSON)
+  @Path("/{downloadIds}/status")
+  @ApiOperation("Get download service availability")
   public List<Map<String, Object>> getJobStatus(
-
       @Auth(required = false) User user,
-
       @ApiParam(value = "download id") @PathParam("downloadIds") String downloadIds) {
-    // TODO: Use dropwizard's built-in params instead of parsing it ourselves
-    // TODO: Probably want to batch this instead of using iteration
-    try {
-      ImmutableList.Builder<Map<String, Object>> statusList = ImmutableList.builder();
-      Set<String> ids = ImmutableSet.copyOf(downloadIds.split(",", -1));
-      boolean isControlled = containsControlledData(downloader.getJobInfo(ids));
-      if (isPermissionDenied(user, isControlled)) {
-        throw new ForbiddenAccessException("Unauthorized access", "download");
-      } else {
-        Map<String, JobStatus> statusMap = downloader.getStatus(ids);
-        for (Entry<String, JobStatus> jobInfo : statusMap.entrySet()) {
-          JobStatus jobStatus = jobInfo.getValue();
-          String id = jobInfo.getKey();
-          statusList.add(standardizeStatus(id, jobStatus));
-        }
-        Set<String> notFoundIds = Sets.difference(ids, statusMap.keySet());
-        for (String downloadId : notFoundIds) {
-          statusList.add(ImmutableMap.<String, Object> of("downloadId", downloadId, "status", NOT_FOUND_STATUS));
-        }
-        return statusList.build();
-      }
-    } catch (IOException e) {
-      log.error("status retrieval error: ", e);
-      throw new NotFoundException(downloadIds, "download");
-    }
+    val ids = ImmutableSet.copyOf(downloadIds.split(",", -1));
+    ensureResoucesAccessPermissions(user, ids);
+
+    val jobProgresses = downloadClient.getJobsProgress(ids);
+    val jobStatuses = jobProgresses.entrySet().stream()
+        .map(e -> standardizeStatus(e.getKey(), e.getValue()))
+        .collect(toList());
+
+    val notFoundIds = Sets.difference(ids, jobProgresses.keySet());
+    val notFoundIdsUiResponse = notFoundIds.stream()
+        .map(id -> ImmutableMap.<String, Object> of("downloadId", id, "status", NOT_FOUND_STATUS))
+        .collect(toList());
+
+    jobStatuses.addAll(notFoundIdsUiResponse);
+
+    return jobStatuses;
   }
 
-  @ApiOperation("Get download size by type subject to the supplied filter condition(s)")
+  @GET
+  @Timed
   @Path("/size")
   @Produces(APPLICATION_JSON)
-  @GET
-  @Timed
+  @ApiOperation("Get download size by type subject to the supplied filter condition(s)")
   public Map<Object, Object> getDataTypeSizePerFileType(
-
       @Auth(required = false) User user,
-
       @ApiParam(value = "Filter the search donors") @QueryParam("filters") @DefaultValue("{}") FiltersParam filters
-
       ) {
     // Work out the query for that returns only donor ids that matches the filter conditions
-    Set<String> donorIds = donorService.findIds(Query.builder().filters(filters.get()).build());
+    val donorIds = donorService.findIds(Query.builder().filters(filters.get()).build());
+    val dataTypeSizes = downloadClient.getSizes(donorIds);
+    val allowedDataTypes = resolveAllowedDataTypes(user);
 
-    Map<DataType, Future<Long>> result = downloader.getSizes(donorIds);
+    val allowedDataTypeSizes = allowedDataTypes.stream()
+        .map(type -> immutableEntry(type.getId(), dataTypeSizes.get(type)))
+        .filter(e -> e.getValue() != null)
+        .collect(toImmutableMap(e -> e.getKey(), e -> e.getValue()));
 
-    Builder<String, Long> filterSizesBuilder = ImmutableMap.builder();
-
-    for (DataType dataType : isLogin(user) ? AccessControl.PrivateAccessibleDataTypes : AccessControl.PublicAccessibleDataTypes) {
-      try {
-        long total = 0;
-        for (DataType type : DataTypeGroupMap.get(dataType)) {
-          if (result.containsKey(type)) {
-            total = total + result.get(type).get();
-          }
-        }
-        filterSizesBuilder.put(dataType.name, total);
-      } catch (Exception e) {
-        log.error("Fail to retrieve size information.", e);
-        throw new BadRequestException("fail to retireve size information");
-      }
+    val response = newArrayList();
+    for (val entry : allowedDataTypeSizes.entrySet()) {
+      val items = ImmutableMap.of(
+          "label", entry.getKey(),
+          "sizes", entry.getValue());
+      response.add(items);
     }
 
-    Map<Object, Object> returnMap = newHashMap();
-    List<Object> typeSizeList = newArrayList();
-    for (Entry<String, Long> entry : filterSizesBuilder.build().entrySet()) {
-      Map<String, Object> item = newHashMap();
-      item.put("label", entry.getKey());
-      item.put("sizes", entry.getValue());
-
-      typeSizeList.add(item);
-    }
-
-    returnMap.put("fileSize", typeSizeList);
-
-    return returnMap;
+    return singletonMap("fileSize", response);
   }
 
-  @ApiOperation("Get the job info based on IDs")
-  @Path("{downloadIds}/info")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
-  public Map<String, Object> getDownloadInfo(
-
+  @Produces(APPLICATION_JSON)
+  @Path("{downloadIds}/info")
+  @ApiOperation("Get the job info based on IDs")
+  public Map<String, Map<String, Object>> getDownloadInfo(
       @Auth(required = false) User user,
-
       // TODO: after merge with shane's branch, use pathparam to handle this
       @ApiParam(value = "id", required = false) @PathParam("downloadIds") @DefaultValue("") IdsParam downloadIds
-
       ) throws IOException {
-    try {
-
-      if (downloadIds.get() != null && downloadIds.get().size() != 0) {
-        Map<String, Map<String, String>> jobInfoMap = downloader.getJobInfo(ImmutableSet.copyOf(downloadIds.get()));
-        ImmutableMap.Builder<String, Object> reportMapBuilder = ImmutableMap.builder();
-        boolean isControlled = containsControlledData(jobInfoMap);
-        if (isPermissionDenied(user, isControlled)) {
-          throw new ForbiddenAccessException("Unauthorized access", "download");
-        } else {
-          for (Entry<String, Map<String, String>> jobInfo : jobInfoMap.entrySet()) {
-            reportMapBuilder.put(jobInfo.getKey(),
-                ImmutableMap.<String, String> builder()
-                    .putAll(jobInfo.getValue())
-                    .put("status", FOUND_STATUS).build());
-          }
-
-          Set<String> notFoundIds =
-              Sets.difference(ImmutableSet.<String> copyOf(downloadIds.get()), jobInfoMap.keySet());
-          for (String downloadId : notFoundIds) {
-            reportMapBuilder.put(downloadId, ImmutableMap.of("status", NOT_FOUND_STATUS));
-          }
-          return reportMapBuilder.build();
-        }
-      } else {
-        throw new NotFoundException("Request denied", "download");
-      }
-    } finally {
-      log.debug("Request job info for : {}", downloadIds.get());
+    val ids = downloadIds.get();
+    if (ids == null || ids.isEmpty()) {
+      throw new NotFoundException("Malformed request. Missing download IDs", "download");
     }
+
+    val jobsInfo = downloadClient.getJobsInfo(ImmutableSet.copyOf(ids));
+    ensureAccessPermissions(user, jobsInfo);
+    val response = jobsInfo.entrySet().stream()
+        .collect(toMap(e -> e.getKey(), e -> createUiJobInfoResponse(e.getValue())));
+
+    val notFoundIds = Sets.difference(ImmutableSet.<String> copyOf(ids), jobsInfo.keySet());
+    val notFoundIdsUiResponse = notFoundIds.stream()
+        .collect(toMap(id -> id, id -> ImmutableMap.<String, Object> of("downloadId", id, "status", NOT_FOUND_STATUS)));
+
+    response.putAll(notFoundIdsUiResponse);
+
+    return response;
   }
 
-  @ApiOperation("Get file info under the specified directory")
-  @Path("/info{dir:.*}")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
+  @Path("/info{dir:.*}")
+  @Produces(APPLICATION_JSON)
+  @ApiOperation("Get file info under the specified directory")
   public List<FileInfo> listDirectory(
-
       @Auth(required = false) User user,
-
       // TODO: queryparam like fn
       @ApiParam(value = "listing of the specified directory under the download relative directory", required = false) @PathParam("dir") String dir
-
       ) throws IOException {
     try {
       if (dir.trim().isEmpty()) dir = "/";
-      return listInfo(new File(dir), isLogin(user));
+      return listInfo(new File(dir), isAuthorized(user));
     } catch (FileNotFoundException e) {
       throw new BadRequestException("Directory not found: " + dir);
     } finally {
@@ -484,16 +322,14 @@ public class DownloadResource {
     }
   }
 
-  @ApiOperation("Get readme under the specified directory")
-  @Path("/readme{dir:.*}")
-  @Produces(APPLICATION_JSON)
   @GET
   @Timed
+  @Path("/readme{dir:.*}")
+  @Produces(APPLICATION_JSON)
+  @ApiOperation("Get readme under the specified directory")
   public String getReadMe(
-
       // TODO: queryparam like fn
       @ApiParam(value = "directory that contains the readme", required = false) @PathParam("dir") String dir
-
       ) throws IOException {
     try {
       if (dir.trim().isEmpty()) dir = "/";
@@ -508,56 +344,38 @@ public class DownloadResource {
   @GET
   @Timed
   public Response getStaticArchive(
-
       @Auth(required = false) User user,
-
-      @ApiParam(value = "filename to download", required = true)//
-      @QueryParam("fn")//
-      @DefaultValue("") String filePath,
-
+      @ApiParam(value = "filename to download", required = true) @QueryParam("fn") @DefaultValue("") String filePath,
       @HeaderParam(RANGE) String range
-
       ) throws IOException {
-
-    if (filePath.trim().equals("")) throw new BadRequestException("Missing argument fn");
-
-    boolean isLogin = isLogin(user);
-    ResponseBuilder rb = ok();
-    StreamingOutput archiveStream = null;
-    String filename = null;
-
-    File downloadFile = new File(filePath);
-    Predicate<File> predicate =
-        (isLogin ? new LoginUserAccessiblePredicate() : new EveryoneAccessiblePredicate());
-
-    boolean hasValidPermission = false;
-    try {
-      if (fs.isFile(downloadFile) && predicate.apply(downloadFile)) {
-        hasValidPermission = true;
-      }
-    } catch (IOException e) {
-      log.error("Permission Denied", e);
+    if (filePath.trim().equals("")) {
+      throw new BadRequestException("Missing argument fn");
     }
 
-    if (!hasValidPermission) {
-      throw new NotFoundException(filePath, "download");
-    }
+    ensureServiceRunning();
+    val downloadFile = new File(filePath);
+    val predicate = isAuthorized(user) ? new ControlledAccessPredicate(fs) : new OpenAccessPredicate(fs);
+
+    testFilePermissions(downloadFile, predicate);
 
     val contentLength = fs.getSize(downloadFile);
 
+    ResponseBuilder response = ok();
     if (range != null) {
       val rangeHeader = parseRange(range, contentLength);
       log.debug("Parsed range header: {}", rangeHeader);
 
-      rb.header(ACCEPT_RANGES, "bytes")
+      response.header(ACCEPT_RANGES, "bytes")
           .header(CONTENT_RANGE, rangeHeader);
     }
 
-    archiveStream = archiveStream(downloadFile, getFromByte(range));
-    rb.header(CONTENT_LENGTH, contentLength);
-    filename = downloadFile.getName();
+    val archiveStream = archiveStream(downloadFile, getFromByte(range));
+    val filename = downloadFile.getName();
 
-    return rb.entity(archiveStream).type(getFileMimeType(filename))
+    return response
+        .entity(archiveStream)
+        .type(getFileMimeType(filename))
+        .header(CONTENT_LENGTH, contentLength)
         .header(CONTENT_DISPOSITION,
             type("attachment")
                 .fileName(filename)
@@ -566,53 +384,45 @@ public class DownloadResource {
         .build();
   }
 
-  @ApiOperation("Get archive based by type subject to the supplied filter condition(s)")
   @GET
   @Timed
   @Path("/{downloadId}")
+  @ApiOperation("Get archive based by type subject to the supplied filter condition(s)")
   public Response getFullArchive(
-
       @Auth(required = false) User user,
-
       @PathParam("downloadId") String downloadId
-
       ) throws IOException {
-    boolean isLogin = isLogin(user);
-    ResponseBuilder rb = ok();
-    StreamingOutput archiveStream = null;
-    String filename = null;
-    // dynamic download
-    if (!downloader.isServiceAvailable() || downloader.isOverCapacity()) throw new ServiceUnavailableException(
-        "Downloader is disabled");
+    ensureServiceRunning();
 
-    final Set<DataType> allowedDataTypes =
-        isLogin ? AccessControl.FullAccessibleDataTypes : AccessControl.PublicAccessibleDataTypes;
+    val jobsStatus = downloadClient.getJobsProgress(ImmutableSet.<String> of(downloadId));
+    val jobProgress = jobsStatus.get(downloadId);
 
-    Map<String, JobStatus> jobStatus = downloader.getStatus(ImmutableSet.<String> of(downloadId));
-    JobStatus status = jobStatus.get(downloadId);
-    if (status == null || status.isExpired()) {
+    ensureJobAvailableForDownload(downloadId, jobProgress);
 
+    // Check if the job still running
+    val tasksProgress = jobProgress.getTaskProgress();
+    val isRunning = tasksProgress
+        .values().stream()
+        .anyMatch(progress -> !isCompleted(progress));
+    if (isRunning) {
       throw new NotFoundException(downloadId, "download");
     }
 
-    Map<DataType, JobProgress> typeProgressMap = status.getProgressMap();
-    for (Entry<DataType, JobProgress> typeStatus : typeProgressMap.entrySet()) {
-      if (!typeStatus.getValue().isCompleted()) {
-        throw new NotFoundException(downloadId, "download");
-      }
-    }
-    // check if types are allowed for download
-    Set<DataType> availableDataTypeGroup = Sets.intersection(typeProgressMap.keySet(), DataTypeGroupMap.keySet());
-    if (!allowedDataTypes.containsAll(availableDataTypeGroup)) {
-      log.error("permission denied for download types that need access control: " + typeProgressMap.entrySet()
-          + ", download id: " + downloadId);
+    // Check if the user is trying to download permitted datatypes
+    val allowedDataTypes = resolveAllowedDataTypes(user);
+    val availableDataTypes = tasksProgress.keySet();
+    if (allowedDataTypes.containsAll(availableDataTypes) == false) {
+      log.error("Permission denied for download types that need access control: {}, download id: {}",
+          availableDataTypes, downloadId);
       throw new NotFoundException(downloadId, "download");
     }
 
-    archiveStream = archiveStream(downloadId, ImmutableList.copyOf(typeProgressMap.keySet()));
-    filename = fileName(FULL_ARCHIVE_EXTENSION);
+    val archiveStream = archiveStream(downloadId, ImmutableList.copyOf(availableDataTypes));
+    val filename = fileName(FULL_ARCHIVE_EXTENSION);
 
-    return rb.entity(archiveStream).type(getFileMimeType(filename))
+    return ok()
+        .entity(archiveStream)
+        .type(getFileMimeType(filename))
         .header(CONTENT_DISPOSITION,
             type("attachment")
                 .fileName(filename)
@@ -621,76 +431,60 @@ public class DownloadResource {
         .build();
   }
 
-  @ApiOperation("Get archive based by type subject to the supplied filter condition(s)")
+  // TODO: refactor
   @GET
   @Timed
   @Path("/{downloadId}/{dataType}")
+  @ApiOperation("Get archive based by type subject to the supplied filter condition(s)")
   public Response getIndividualTypeArchive(
-
       @Auth(required = false) User user,
-
       @PathParam("downloadId") String downloadId,
       @PathParam("dataType") final String dataType
-
       ) throws IOException {
-    boolean isLogin = isLogin(user);
-    ResponseBuilder rb = ok();
-    StreamingOutput archiveStream = null;
-    String filename = null;
-    // dynamic download
-    if (!downloader.isServiceAvailable() || downloader.isOverCapacity()) throw new ServiceUnavailableException(
-        "Downloader is disabled");
+    ensureServiceRunning();
 
-    final Set<DataType> allowedDataTypes =
-        isLogin ? AccessControl.FullAccessibleDataTypes : AccessControl.PublicAccessibleDataTypes;
+    val jobsStatus = downloadClient.getJobsProgress(ImmutableSet.<String> of(downloadId));
+    val jobProgress = jobsStatus.get(downloadId);
 
-    Map<String, JobStatus> jobStatus = downloader.getStatus(ImmutableSet.<String> of(downloadId));
-    JobStatus status = jobStatus.get(downloadId);
-    if (status == null || status.isExpired()) {
+    ensureJobAvailableForDownload(downloadId, jobProgress);
 
+    val allowedDataTypes = resolveAllowedDataTypes(user);
+    val tasksProgress = jobProgress.getTaskProgress();
+    val availableDataTypes = tasksProgress.keySet();
+
+    val downloadableTypes = Sets.intersection(availableDataTypes, allowedDataTypes);
+    val selectedTypes = downloadableTypes.stream()
+        .filter(dt -> dt.getCanonicalName().equals(dataType))
+        .collect(toImmutableSet());
+
+    if (selectedTypes.isEmpty()) {
+      log.error("[{}] Permission denied for download type '{}' that needs access control.", downloadId, dataType);
       throw new NotFoundException(downloadId, "download");
-    }
-    Map<DataType, JobProgress> typeProgressMap = status.getProgressMap();
-    Set<DataType> downloadableTypes = Sets.intersection(typeProgressMap.keySet(), allowedDataTypes);
-
-    Set<DataType> selectedType = Sets.filter(downloadableTypes, new Predicate<DataType>() {
-
-      @Override
-      public boolean apply(DataType input) {
-        return input.name.equals(dataType);
-      }
-
-    });
-    if (selectedType.isEmpty()) {
-      log.error("permission denied for download type that needs access control: " + dataType
-          + ", download id: " + downloadId);
+    } else if (selectedTypes.size() > 1) {
+      log.error("[{}] Failed to resolve DownloadDataType for requested type '{}'. Resolved ones: {}",
+          new Object[] { downloadId, dataType, selectedTypes });
       throw new NotFoundException(downloadId, "download");
     }
 
-    List<DataType> downloadTypes = DataTypeGroupMap.get(selectedType.iterator().next());
-    ImmutableList.Builder<DataType> actualDownloadTypes = ImmutableList.builder();
-    for (DataType type : downloadTypes) {
-      // to handle optional sub-type
-      if (typeProgressMap.get(type) != null) {
-        if (!typeProgressMap.get(type).isCompleted()) {
-          log.error("Data type is not ready for download yet. Data Type: " + type + ", Dowload ID: " + downloadId);
-          throw new NotFoundException(downloadId, "download");
-        } else {
-          actualDownloadTypes.add(type);
-        }
-      }
+    val selectedType = Iterables.get(selectedTypes, 0);
+    if (isCompleted(tasksProgress.get(selectedType)) == false) {
+      log.error("[{}] Data type '{}' is not ready for download yet.", downloadId, selectedType);
+      throw new NotFoundException(downloadId, "download");
     }
+
+    val actualDownloadTypes = resolveActualDownloadType(selectedType, availableDataTypes);
+
     String extension = INDIVIDUAL_TYPE_ARCHIVE_EXTENSION;
-    downloadTypes = actualDownloadTypes.build();
-    if (downloadTypes.size() == 1) {
-      archiveStream = archiveStream(downloadId, downloadTypes.get(0));
+    StreamingOutput archiveStream = null;
+    if (actualDownloadTypes.size() == 1) {
+      archiveStream = archiveStream(downloadId, actualDownloadTypes.get(0));
     } else {
-      archiveStream = archiveStream(downloadId, downloadTypes);
+      archiveStream = archiveStream(downloadId, actualDownloadTypes);
       extension = FULL_ARCHIVE_EXTENSION;
     }
 
-    filename = fileName(extension);
-    return rb.entity(archiveStream).type(getFileMimeType(filename))
+    val filename = fileName(extension);
+    return ok().entity(archiveStream).type(getFileMimeType(filename))
         .header(CONTENT_DISPOSITION,
             type("attachment")
                 .fileName(filename)
@@ -699,17 +493,94 @@ public class DownloadResource {
         .build();
   }
 
-  @Data
-  public static class ServiceStatus {
+  private Set<String> resolveDonorIds(FiltersParam filters) {
+    val donorIds = donorService.findIds(Query.builder().filters(filters.get()).build());
+    if (donorIds.isEmpty()) {
+      log.error("No donor ids found for filter: {}", filters);
+      throw new NotFoundException("No donor found", "download");
+    }
+    log.info("Number of donors to be retrieved: {}", donorIds.size());
 
-    private final boolean serviceStatus;
-
+    return donorIds;
   }
 
-  @Data
-  public static class JobInfo {
+  private void ensureAccessPermissions(User user, Map<String, org.icgc.dcc.download.core.model.JobInfo> jobsInfo) {
+    val controlled = hasControlledData(jobsInfo);
+    if (isPermissionDenied(user, controlled)) {
+      throw new ForbiddenAccessException("Unauthorized access", "download");
+    }
+  }
 
-    private final String downloadId;
+  private Set<DownloadDataType> resolveAllowedDataTypes(User user) {
+    return isAuthorized(user) ? DownloadDataTypes.CONTROLLED_DATA_TYPES : DownloadDataTypes.PUBLIC_DATA_TYPES;
+  }
+
+  private Set<DownloadDataType> resolveDownloadDataTypes(User user, String rawDownloadDataTypes) {
+    val dataTypeNames = parseDownloadDataTypeNames(rawDownloadDataTypes);
+    val authorized = isAuthorized(user);
+    val requestedDataTypes = dataTypeNames.stream()
+        .map(name -> DownloadDataType.from(name, authorized))
+        .collect(toImmutableSet());
+
+    return Sets.intersection(resolveAllowedDataTypes(user), requestedDataTypes);
+  }
+
+  private Map<String, Object> createUiJobInfoResponse(org.icgc.dcc.download.core.model.JobInfo jobInfo) {
+    val response = ImmutableMap.<String, Object> builder()
+        .put("filter", jobInfo.getFilter())
+        .put("uiQueryStr", jobInfo.getUiQueryStr())
+        .put("startTime", String.valueOf(jobInfo.getStartTime()))
+        .put("hasEmail", String.valueOf(!jobInfo.getEmail().equals(defaultEmail)))
+        .put(IS_CONTROLLED, String.valueOf(jobInfo.isControlled()))
+        .put("status", FOUND_STATUS);
+
+    if (jobInfo.getCompletionTime() != 0) {
+      response.put("et", jobInfo.getCompletionTime());
+    }
+
+    if (jobInfo.getFileSize() != 0) {
+      response.put("fileSize", jobInfo.getFileSize());
+    }
+
+    if (jobInfo.getTtl() != 0) {
+      response.put("ttl", String.valueOf(jobInfo.getTtl()));
+    }
+
+    return response.build();
+  }
+
+  private void ensureServiceRunning() {
+    if (!downloadClient.isServiceAvailable()) {
+      throw new ServiceUnavailableException("Downloader is disabled");
+    }
+  }
+
+  private void testFilePermissions(File downloadFile, Predicate<File> predicate) {
+    try {
+      val hasValidPermission = (fs.isFile(downloadFile) && predicate.apply(downloadFile));
+      if (!hasValidPermission) {
+        throw new ForbiddenAccessException(downloadFile.getAbsolutePath(), "download");
+      }
+    } catch (IOException e) {
+      log.error("Permission Denied", e);
+      throw new NotFoundException(downloadFile.getAbsolutePath(), "download");
+    }
+  }
+
+  private static List<DownloadDataType> resolveActualDownloadType(DownloadDataType selectedType,
+      Set<DownloadDataType> availableDataTypes) {
+    return selectedType != DownloadDataType.DONOR ?
+        singletonList(selectedType) :
+        availableDataTypes.stream()
+            .filter(dt -> DownloadDataType.CLINICAL.contains(dt))
+            .collect(toImmutableList());
+  }
+
+  private void ensureJobAvailableForDownload(String downloadId,
+      final JobProgress jobProgress) {
+    if (jobProgress == null || jobProgress.getStatus().equals(org.icgc.dcc.download.core.model.JobStatus.EXPIRED)) {
+      throw new NotFoundException(downloadId, "download");
+    }
   }
 
   /*
@@ -739,93 +610,77 @@ public class DownloadResource {
   }
 
   private boolean isPermissionDenied(User user, boolean isControlled) {
-    if (isControlled && !isLogin(user)) {
+    if (isControlled && !isAuthorized(user)) {
       return true;
     } else {
       return false;
     }
   }
 
-  private Map<String, Object> standardizeStatus(String id, JobStatus jobStatus) {
-    if (jobStatus.isNotFound()) {
-      return ImmutableMap.<String, Object> of("downloadId", id, "status", NOT_FOUND_STATUS);
+  private static Map<String, Object> standardizeStatus(String id,
+      org.icgc.dcc.download.core.model.JobProgress jobProgress) {
+    if (jobProgress == null) {
+      return ImmutableMap.of("downloadId", id, "status", NOT_FOUND_STATUS);
     }
 
-    Map<DataType, JobProgress> jobProgressMap = jobStatus.getProgressMap();
-    Set<DataType> selectedGroups = Sets.intersection(jobProgressMap.keySet(), DataTypeGroupMap.keySet());
-    ImmutableList.Builder<Map<String, String>> groupProgressListBuilder = ImmutableList.builder();
+    val downloadDataTypesProgress = ImmutableList.<Map<String, String>> builder();
+    val tasksProgress = jobProgress.getTaskProgress();
 
-    for (DataType selectedGroup : selectedGroups) {
-      ImmutableMap.Builder<String, String> uiBuilder = ImmutableMap.builder();
-      JobProgress groupProgress = new JobProgress(0, 0);
-      for (DataType dataType : DataTypeGroupMap.get(selectedGroup)) {
-        if (jobProgressMap.get(dataType) != null) {
-          groupProgress
-              .setDenominator(jobProgressMap.get(dataType).getDenominator() + groupProgress.getDenominator());
-          groupProgress.setNumerator(jobProgressMap.get(dataType).getNumerator() + groupProgress.getNumerator());
-        }
-      }
-      uiBuilder.put("dataType", selectedGroup.name);
-      uiBuilder.put("completed", String.valueOf(groupProgress.isCompleted()));
-      uiBuilder.put("numerator", String.valueOf(groupProgress.getNumerator()));
-      uiBuilder.put("denominator", String.valueOf(groupProgress.getDenominator()));
-      uiBuilder.put("percentage", String.valueOf(groupProgress.getPercentage()));
-      groupProgressListBuilder.add(uiBuilder.build());
+    for (val progressEntry : tasksProgress.entrySet()) {
+      val uiProgress = createUiProgress(progressEntry);
+      downloadDataTypesProgress.add(uiProgress);
     }
-    String status = getUIStates(jobStatus);
-    return ImmutableMap.<String, Object> of("downloadId", id, "status", status,
-        "progress",
-        groupProgressListBuilder.build());
+
+    val uiStatus = jobProgress.getStatus().name();
+
+    return ImmutableMap.of(
+        "downloadId", id,
+        "status", uiStatus,
+        "progress", downloadDataTypesProgress.build());
   }
 
-  private String getUIStates(JobStatus jobStatus) {
+  private static Map<String, String> createUiProgress(Entry<DownloadDataType, TaskProgress> progressEntry) {
+    val dataType = progressEntry.getKey();
+    val taskProgress = progressEntry.getValue();
 
-    String status = jobStatus.getWorkflowStatus().name();
-    if (jobStatus.isNotFound()) {
-      status = NOT_FOUND_STATUS;
-    } else if (jobStatus.isExpired()) {
-      status = EXPIRED_STATUS;
-    }
-    return status;
+    return ImmutableMap.<String, String> builder()
+        .put("dataType", dataType.getCanonicalName())
+        .put("completed", String.valueOf(isCompleted(taskProgress)))
+        .put("numerator", String.valueOf(taskProgress.getNumerator()))
+        .put("denominator", String.valueOf(taskProgress.getDenominator()))
+        .put("percentage", String.valueOf(getPercentage(taskProgress)))
+        .build();
   }
 
-  /**
-   * @param jobInfoMap
-   * @return
-   */
-  private boolean containsControlledData(Map<String, Map<String, String>> jobInfoMap) {
-    for (val entry : jobInfoMap.entrySet()) {
-      String isControlled = entry.getValue().get(IS_CONTROLLED);
-      if (isControlled != null && Boolean.valueOf(isControlled)) {
-        return true;
-      }
-    }
-    return false;
+  private static boolean isCompleted(TaskProgress taskProgress) {
+    return getPercentage(taskProgress) >= 1.0;
   }
 
-  private StreamingOutput archiveStream(final String downloadId, final List<DataType> selectedDataTypes) {
+  private static double getPercentage(TaskProgress taskProgress) {
+    val numerator = taskProgress.getNumerator();
+    val denominator = taskProgress.getDenominator();
+
+    return (numerator == 0.0 && denominator == 0.0) ? 0.0 : (double) numerator / denominator;
+  }
+
+  private StreamingOutput archiveStream(String downloadId, List<DownloadDataType> selectedDataTypes) {
     return new StreamingOutput() {
 
       @Override
       public void write(final OutputStream out) throws IOException, WebApplicationException {
-        if (!downloader.streamArchiveInGzTar(out, downloadId, selectedDataTypes)) {
+        if (!downloadClient.streamArchiveInTarGz(out, downloadId, selectedDataTypes)) {
           throw new BadRequestException("Data not found for download id: " + downloadId);
         }
       }
     };
   }
 
-  /**
-   * @param downloadId
-   * @param dataType
-   * @return StreamingOutput
-   */
-  private StreamingOutput archiveStream(final String downloadId, final DataType dataType) {
+  private StreamingOutput archiveStream(String downloadId, DownloadDataType dataType) {
     return new StreamingOutput() {
 
       @Override
       public void write(final OutputStream out) throws IOException, WebApplicationException {
-        if (!downloader.streamArchiveInGz(out, downloadId, dataType)) {
+        if (!downloadClient.streamArchiveInGz(out, downloadId, dataType)) {
           throw new BadRequestException("Data not found for download id: " + downloadId);
         }
       }
@@ -852,41 +707,11 @@ public class DownloadResource {
     return format("icgc-dataset-%s" + extension, currentTimeMillis());
   }
 
-  private final class EveryoneAccessiblePredicate implements Predicate<File> {
-
-    @Override
-    public boolean apply(@Nullable File file) {
-      AccessPermission perm;
-      try {
-        perm = fs.getPermission(file);
-        if (perm == AccessPermission.UNCHECKED || perm == AccessPermission.OPEN) return true;
-      } catch (IOException e) {
-        throw new BadRequestException("File not found: " + file);
-      }
-      return false;
-    }
-  }
-
-  private final class LoginUserAccessiblePredicate implements Predicate<File> {
-
-    @Override
-    public boolean apply(@Nullable File file) {
-      AccessPermission perm;
-      try {
-        perm = fs.getPermission(file);
-        if (perm == AccessPermission.UNCHECKED || perm == AccessPermission.CONTROLLED) return true;
-      } catch (IOException e) {
-        throw new BadRequestException("File not found: " + file);
-      }
-      return false;
-    }
-  }
-
-  private List<FileInfo> listInfo(File dir, boolean isLogin) throws IOException {
+  private List<FileInfo> listInfo(File dir, boolean authenticated) throws IOException {
     List<FileInfo> info = newArrayList();
 
     for (File file : Iterables.filter(fs.listFiles(dir),
-        isLogin ? new LoginUserAccessiblePredicate() : new EveryoneAccessiblePredicate())) {
+        authenticated ? new ControlledAccessPredicate(fs) : new OpenAccessPredicate(fs))) {
       String type = "d";
       long size = 0;
       long date = fs.getModificationTime(file);
@@ -910,7 +735,12 @@ public class DownloadResource {
     return info;
   }
 
-  private boolean isLogin(User user) {
+  private void ensureResoucesAccessPermissions(User user, Set<String> ids) {
+    val jobsInfo = downloadClient.getJobsInfo(ids);
+    ensureAccessPermissions(user, jobsInfo);
+  }
+
+  private boolean isAuthorized(User user) {
     return (env == Stage.DEVELOPMENT || user != null);
   }
 
@@ -924,6 +754,11 @@ public class DownloadResource {
       type = APPLICATION_TAR;
     }
     return type;
+  }
+
+  private static boolean hasControlledData(Map<String, org.icgc.dcc.download.core.model.JobInfo> jobsInfo) {
+    return jobsInfo.values().stream()
+        .anyMatch(jobInfo -> jobInfo.isControlled());
   }
 
 }

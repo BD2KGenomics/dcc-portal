@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -39,13 +40,15 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Cookie;
 
-import org.apache.oozie.client.WorkflowJob.Status;
-import org.icgc.dcc.downloader.client.DownloaderClient;
-import org.icgc.dcc.downloader.client.ExportedDataFileSystem;
-import org.icgc.dcc.downloader.client.ExportedDataFileSystem.AccessPermission;
-import org.icgc.dcc.downloader.core.ArchiveJobManager.JobProgress;
-import org.icgc.dcc.downloader.core.ArchiveJobManager.JobStatus;
-import org.icgc.dcc.downloader.core.DataType;
+import lombok.val;
+
+import org.icgc.dcc.download.client.DefaultDownloadClient;
+import org.icgc.dcc.download.client.io.AccessPermission;
+import org.icgc.dcc.download.client.io.DownloadFileSystem;
+import org.icgc.dcc.download.core.model.DownloadDataType;
+import org.icgc.dcc.download.core.model.JobProgress;
+import org.icgc.dcc.download.core.model.JobStatus;
+import org.icgc.dcc.download.core.model.TaskProgress;
 import org.icgc.dcc.portal.auth.UserAuthProvider;
 import org.icgc.dcc.portal.auth.UserAuthenticator;
 import org.icgc.dcc.portal.auth.oauth.OAuthClient;
@@ -53,8 +56,8 @@ import org.icgc.dcc.portal.config.PortalProperties.CrowdProperties;
 import org.icgc.dcc.portal.mapper.BadRequestExceptionMapper;
 import org.icgc.dcc.portal.model.User;
 import org.icgc.dcc.portal.service.DonorService;
+import org.icgc.dcc.portal.service.ForbiddenAccessException;
 import org.icgc.dcc.portal.service.NotFoundException;
-import org.icgc.dcc.portal.service.ServiceUnavailableException;
 import org.icgc.dcc.portal.service.SessionService;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -82,11 +85,11 @@ public class DownloadResourceTest extends ResourceTest {
   @Mock
   private DonorService donorService;
   @Mock
-  private DownloaderClient downloader;
+  private DefaultDownloadClient downloader;
   @Mock
   private OAuthClient oauthClient;
   @Mock
-  private ExportedDataFileSystem fs;
+  private DownloadFileSystem fs;
 
   private final UUID sessionToken = UUID.randomUUID();
   private final User user = new User(null, sessionToken);
@@ -99,14 +102,15 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Override
   protected final void setUpResources() {
-    addResource(new DownloadResource(donorService, downloader, fs, Stage.PRODUCTION));
+    when(downloader.isServiceAvailable()).thenReturn(true);
+    addResource(new DownloadResource(donorService, fs, Stage.PRODUCTION, downloader, null));
     addProvider(BadRequestExceptionMapper.class);
     addProvider(new UserAuthProvider(new UserAuthenticator(sessionService, oauthClient), "openid"));
   }
 
   @Test
   public void testPublicDataAccessFile() throws IOException {
-    when(fs.getPermission(any(File.class))).thenReturn(AccessPermission.UNCHECKED);
+    when(fs.getAccessPermission(any(File.class))).thenReturn(AccessPermission.UNCHECKED);
     when(fs.isFile(any(File.class))).thenReturn(true);
     when(fs.exists(any(File.class))).thenReturn(true);
     when(fs.createInputStream((any(File.class)), anyInt())).thenReturn(new ByteArrayInputStream("test".getBytes()));
@@ -123,7 +127,7 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Test
   public void testOpenDataAccessFile() throws IOException {
-    when(fs.getPermission(any(File.class))).thenReturn(AccessPermission.OPEN);
+    when(fs.getAccessPermission(any(File.class))).thenReturn(AccessPermission.OPEN);
     when(fs.createInputStream((any(File.class)), anyInt())).thenReturn(new ByteArrayInputStream("test".getBytes()));
     when(fs.isFile(any(File.class))).thenReturn(true);
     when(fs.exists(any(File.class))).thenReturn(true);
@@ -140,12 +144,12 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Test
   public void testControlledDataAccessFile() throws IOException {
-    when(fs.getPermission(any(File.class))).thenReturn(AccessPermission.CONTROLLED);
+    when(fs.getAccessPermission(any(File.class))).thenReturn(AccessPermission.CONTROLLED);
     when(fs.createInputStream((any(File.class)), anyInt())).thenReturn(new ByteArrayInputStream("test".getBytes()));
     when(fs.isFile(any(File.class))).thenReturn(true);
     when(fs.exists(any(File.class))).thenReturn(true);
 
-    ClientResponse response = client()
+    val response = client()
         .resource(RESOURCE)
         .queryParam("fn", "filename_control.txt.gz")
         .queryParam("filters", "")
@@ -156,10 +160,10 @@ public class DownloadResourceTest extends ResourceTest {
     assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
   }
 
-  @Test(expected = NotFoundException.class)
+  @Test(expected = ForbiddenAccessException.class)
   public void testDeniedControlledDataAccessFile() throws IOException {
-    when(fs.getPermission(any(File.class))).thenReturn(AccessPermission.CONTROLLED);
-    when(fs.createInputStream((any(File.class)), anyInt())).thenReturn(new ByteArrayInputStream("test".getBytes()));
+    when(fs.isFile(any(File.class))).thenReturn(true);
+    when(fs.getAccessPermission(any(File.class))).thenReturn(AccessPermission.CONTROLLED);
 
     client()
         .resource(RESOURCE)
@@ -171,25 +175,19 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Test
   public void testOpenDataAccessStream() throws IOException {
-    when(
-        downloader.streamArchiveInGzTar(any(OutputStream.class), anyString(),
-            Matchers.<List<DataType>> any()))
-                .thenReturn(true);
-    String testId = "TESTID";
-    JobStatus jobStatus =
-        new JobStatus(Status.SUCCEEDED, ImmutableMap.<DataType, JobProgress> of(DataType.SSM_OPEN,
-            new JobProgress(1, 1)), false, false);
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    when(downloader.getStatus(anySetOf(String.class))).thenReturn(ImmutableMap.of(testId, jobStatus));
+    when(downloader.streamArchiveInTarGz(any(OutputStream.class), anyString(), any())).thenReturn(true);
+    val testId = "TESTID";
+    val jobProgress = createSuccessfulJobProgress();
+    when(downloader.getJobsProgress(anySetOf(String.class))).thenReturn(ImmutableMap.of(testId, jobProgress));
 
-    ClientResponse response = client()
+    val response = client()
         .resource(RESOURCE + "/" + testId)
         .queryParam("filters", "")
         .queryParam("info", "[{\"key\":\"SSM\",\"value\":\"TSV\"}]")
         .get(ClientResponse.class);
-    List<DataType> selection =
-        ImmutableList.of(DataType.SSM_OPEN);
-    verify(downloader).streamArchiveInGzTar(any(OutputStream.class), anyString(),
+
+    val selection = ImmutableList.of(DownloadDataType.SSM_OPEN);
+    verify(downloader).streamArchiveInTarGz(any(OutputStream.class), anyString(),
         argThat(new SelectionEntryArgumentMatcher(selection)));
     assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
   }
@@ -213,12 +211,8 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Test(expected = NotFoundException.class)
   public void testDeniedControlledDataAccessStream() throws IOException {
-    when(
-        downloader.streamArchiveInGzTar(any(OutputStream.class), anyString(),
-            Matchers.<List<DataType>> any()))
-                .thenReturn(true);
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    // // try to access control data without proper authentication
+    when(fs.isFile(any(File.class))).thenThrow(new FileNotFoundException());
+    // try to access control data without proper authentication
     client()
         .resource(RESOURCE)
         .queryParam("fn", "somefiles")
@@ -230,82 +224,61 @@ public class DownloadResourceTest extends ResourceTest {
   @Ignore
   public void testcontrolAccessStream() throws IOException {
     when(
-        downloader.streamArchiveInGzTar(any(OutputStream.class), anyString(),
-            Matchers.<List<DataType>> any()))
-                .thenReturn(true);
-    when(downloader.isServiceAvailable()).thenReturn(true);
+        downloader.streamArchiveInTarGz(any(OutputStream.class), anyString(),
+            Matchers.<List<DownloadDataType>> any()))
+        .thenReturn(true);
     ClientResponse response = client()
         .resource(RESOURCE)
         .queryParam("filters", "")
         .queryParam("info", "[{\"key\":\"ssm\",\"value\":\"TSV\"}]")
         .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
-    List<DataType> selection =
-        ImmutableList.of(DataType.SSM_CONTROLLED);
-    verify(downloader).streamArchiveInGzTar(any(OutputStream.class), anyString(),
+    List<DownloadDataType> selection =
+        ImmutableList.of(DownloadDataType.SSM_CONTROLLED);
+    verify(downloader).streamArchiveInTarGz(any(OutputStream.class), anyString(),
         argThat(new SelectionEntryArgumentMatcher(selection)));
     assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
   }
 
   @Test
   public void test_getArchive_found() throws IOException {
-    when(
-        downloader.streamArchiveInGzTar(any(OutputStream.class), anyString(),
-            Matchers.<List<DataType>> any()))
-                .thenReturn(true);
-
-    String testId = "TESTID";
-    JobStatus jobStatus =
-        new JobStatus(Status.SUCCEEDED, ImmutableMap.<DataType, JobProgress> of(DataType.SSM_OPEN,
-            new JobProgress(1, 1)), false, false);
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    when(downloader.getStatus(anySetOf(String.class))).thenReturn(ImmutableMap.of(testId, jobStatus));
+    when(downloader.streamArchiveInTarGz(any(OutputStream.class), anyString(), any())).thenReturn(true);
+    val testId = "TESTID";
+    val jobStatus = createSuccessfulJobProgress();
+    when(downloader.getJobsProgress(anySetOf(String.class))).thenReturn(ImmutableMap.of(testId, jobStatus));
 
     ClientResponse response = client()
         .resource(RESOURCE + "/" + testId)
         .queryParam("filters", "")
         .queryParam("info", "")
         .get(ClientResponse.class);
-    verify(downloader).streamArchiveInGzTar(any(OutputStream.class), anyString(),
-        Matchers.<List<DataType>> any());
+
+    verify(downloader).streamArchiveInTarGz(any(OutputStream.class), anyString(), any());
     assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
   }
 
-  // @Test(expected = BadRequestException.class)
-  public void test_getArchive_bad_request() {
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    client()
+  @Test
+  public void testGetArchiveBadRequest() {
+    val response = client()
         .resource(RESOURCE)
         .queryParam("filters", "")
         .queryParam("info", "")
         .get(ClientResponse.class);
-  }
 
-  @Test(expected = ServiceUnavailableException.class)
-  public void testOverCapacity() {
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    when(downloader.isOverCapacity()).thenReturn(true);
-    client()
-        .resource(RESOURCE + "/testid")
-        .queryParam("filters", "")
-        .queryParam("info", "")
-        .get(ClientResponse.class);
+    assertThat(response.getStatus()).isEqualTo(400);
   }
 
   @Test
   public void testGetJobStatusWithOverCapacity() {
-    when(downloader.isServiceAvailable()).thenReturn(true);
-    when(downloader.isOverCapacity()).thenReturn(true);
     Map<String, Object> response = client()
         .resource(RESOURCE + "/status")
         .get(new GenericType<Map<String, Object>>() {});
-    assertThat(response.get("serviceStatus")).isEqualTo(false);
+    assertThat(response.get("serviceStatus")).isEqualTo(true);
   }
 
   @Test
   public void testGetJobStatusWithUnavailable() {
     when(downloader.isServiceAvailable()).thenReturn(false);
-    when(downloader.isOverCapacity()).thenReturn(false);
     Map<String, Object> response = client()
         .resource(RESOURCE + "/status")
         .queryParam("filters", "")
@@ -314,18 +287,23 @@ public class DownloadResourceTest extends ResourceTest {
     assertThat(response.get("serviceStatus")).isEqualTo(false);
   }
 
-  private static final class SelectionEntryArgumentMatcher extends ArgumentMatcher<List<DataType>> {
+  private static JobProgress createSuccessfulJobProgress() {
+    return new JobProgress(JobStatus.SUCCEEDED,
+        ImmutableMap.of(DownloadDataType.SSM_OPEN, new TaskProgress(1, 1)));
+  }
 
-    List<DataType> selection;
+  private static final class SelectionEntryArgumentMatcher extends ArgumentMatcher<List<DownloadDataType>> {
 
-    public SelectionEntryArgumentMatcher(List<DataType> selection) {
+    List<DownloadDataType> selection;
+
+    public SelectionEntryArgumentMatcher(List<DownloadDataType> selection) {
       this.selection = selection;
     }
 
     @Override
     public boolean matches(Object argument) {
       @SuppressWarnings("unchecked")
-      List<DataType> selection = (List<DataType>) argument;
+      List<DownloadDataType> selection = (List<DownloadDataType>) argument;
       return this.selection.equals(selection);
     }
   }

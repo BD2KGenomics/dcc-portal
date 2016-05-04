@@ -43,6 +43,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>dcc-download-client</artifactId>
+        <version>${dcc-download.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>dcc-downloader-client</artifactId>
         <version>${dcc-downloader.version}</version>
       </dependency>
@@ -91,6 +96,7 @@
     <!-- Versions - DCC -->
     <dcc-common.version>3.9.0</dcc-common.version>
     <dcc-downloader.version>3.8.6.0</dcc-downloader.version>
+    <dcc-download.version>1.0-SNAPSHOT</dcc-download.version>
     <dcc-etl.version>3.8.19</dcc-etl.version>
     <dcc-repository.version>1.0.0</dcc-repository.version>
 

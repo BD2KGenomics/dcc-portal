@@ -17,45 +17,79 @@
 
 package org.icgc.dcc.portal.config;
 
-import org.icgc.dcc.downloader.client.DownloaderClient;
-import org.icgc.dcc.downloader.client.ExportedDataFileSystem;
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.icgc.dcc.download.client.io.DownloadFileSystem.DEFAULT_ROOT_DIR;
+
+import java.io.IOException;
+
+import lombok.SneakyThrows;
+import lombok.val;
+
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.icgc.dcc.download.client.DefaultDownloadClient;
+import org.icgc.dcc.download.client.DownloadClient;
+import org.icgc.dcc.download.client.HttpDownloadClient;
+import org.icgc.dcc.download.client.NoOpDownloadClient;
+import org.icgc.dcc.download.client.io.ArchiveOutputStream;
+import org.icgc.dcc.download.client.io.CurrentProjectSimLink;
+import org.icgc.dcc.download.client.io.DownloadFileSystem;
 import org.icgc.dcc.portal.config.PortalProperties.DownloadProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-
-import lombok.SneakyThrows;
-import lombok.val;
 
 @Lazy
 @Configuration
 public class DownloadConfig {
 
   @Bean
-  public DownloaderClient dynamicDownloader(DownloadProperties download) {
-    if (!download.isEnabled()) {
-      return null;
+  @SneakyThrows
+  public DownloadClient downloadClient(DownloadProperties properties) {
+    if (properties.isEnabled() == false) {
+      return new NoOpDownloadClient();
     }
 
-    return new DownloaderClient(
-        download.getUri() + download.getDynamicRootPath(),
-        download.getQuorum(),
-        download.getOozieUrl(),
-        download.getAppPath(),
-        download.getSupportEmailAddress(),
-        download.getCapacityThreshold(),
-        download.getReleaseName());
+    val dynamicDownloadPath = new Path(properties.getDynamicRootPath());
+    val out = new ArchiveOutputStream(dynamicDownloadPath, getFileSystem(properties));
+    val httpClient = new HttpDownloadClient(properties.getServerUrl());
+
+    return new DefaultDownloadClient(out, httpClient);
   }
 
   @Bean
   @SneakyThrows
-  public ExportedDataFileSystem exportedDataFileSystem(DownloadProperties download) {
-    if (!download.isEnabled()) {
+  public DownloadFileSystem downloadFileSystem(DownloadProperties properties) {
+    if (properties.isEnabled() == false) {
       return null;
     }
 
-    val rootDir = download.getUri() + download.getStaticRootPath();
-    return new ExportedDataFileSystem(rootDir, download.getCurrentReleaseSymlink());
+    val rootDir = properties.getUri() + properties.getStaticRootPath();
+    val rootUri = (new Path(rootDir)).toUri();
+    val rootPath = rootDir != null ? new Path(rootUri.getPath()) : new Path(DEFAULT_ROOT_DIR);
+
+    val fileSystem = getFileSystem(properties);
+    if (!fileSystem.exists(rootPath)) {
+      throw new IOException("root directory doesn't exist:" + rootPath);
+    }
+    fileSystem.setWorkingDirectory(rootPath);
+
+    return new DownloadFileSystem(currentProjectSimLink(properties), fileSystem, rootPath);
+  }
+
+  private static CurrentProjectSimLink currentProjectSimLink(DownloadProperties properties) {
+    val currentSymlink = properties.getCurrentReleaseSymlink();
+    String[] currentReleaseLink = currentSymlink.split(" ");
+    checkArgument(currentReleaseLink.length == 2, "Invalid argument for currentSymlink:" + currentSymlink);
+
+    return new CurrentProjectSimLink(currentReleaseLink[0], currentReleaseLink[1]);
+  }
+
+  private static FileSystem getFileSystem(DownloadProperties properties) throws IOException {
+    val hadoopConfig = new org.apache.hadoop.conf.Configuration();
+    hadoopConfig.set("fs.defaultFS", properties.getUri());
+
+    return FileSystem.get(hadoopConfig);
   }
 
 }
