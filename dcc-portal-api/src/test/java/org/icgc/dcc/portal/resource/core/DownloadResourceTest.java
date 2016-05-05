@@ -53,6 +53,7 @@ import org.icgc.dcc.portal.auth.UserAuthProvider;
 import org.icgc.dcc.portal.auth.UserAuthenticator;
 import org.icgc.dcc.portal.auth.oauth.OAuthClient;
 import org.icgc.dcc.portal.config.PortalProperties.CrowdProperties;
+import org.icgc.dcc.portal.config.PortalProperties.DownloadProperties;
 import org.icgc.dcc.portal.mapper.BadRequestExceptionMapper;
 import org.icgc.dcc.portal.model.User;
 import org.icgc.dcc.portal.service.DonorService;
@@ -90,6 +91,8 @@ public class DownloadResourceTest extends ResourceTest {
   private OAuthClient oauthClient;
   @Mock
   private DownloadFileSystem fs;
+  @Mock
+  private DownloadProperties properties;
 
   private final UUID sessionToken = UUID.randomUUID();
   private final User user = new User(null, sessionToken);
@@ -103,7 +106,7 @@ public class DownloadResourceTest extends ResourceTest {
   @Override
   protected final void setUpResources() {
     when(downloader.isServiceAvailable()).thenReturn(true);
-    addResource(new DownloadResource(donorService, fs, Stage.PRODUCTION, downloader, null));
+    addResource(new DownloadResource(donorService, fs, Stage.PRODUCTION, downloader, properties));
     addProvider(BadRequestExceptionMapper.class);
     addProvider(new UserAuthProvider(new UserAuthenticator(sessionService, oauthClient), "openid"));
   }
