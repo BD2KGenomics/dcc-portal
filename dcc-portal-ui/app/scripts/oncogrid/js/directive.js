@@ -74,11 +74,11 @@
             $scope.donors = data;
           });
 
-          var genePromise = Genes.getList({
+          var genePromise = Genes.getAll({
             filters: $scope.geneFilter,
             size: 100
           }).then(function (data) {
-            $scope.genes = data.hits;
+            $scope.genes = data;
           });
 
           var occurrencePromise = Occurrences.getAll({
@@ -160,8 +160,8 @@
             genes: genes,
             observations: observations,
             element: '#oncogrid-div',
-            height: 400, 
-            width: 700,
+            height: 500, 
+            width: 900,
             heatMap: true,
             trackHeight: 15,
             donorTracks: donorTracks,
