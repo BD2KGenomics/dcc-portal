@@ -87,6 +87,14 @@ $shadowColor: $tooltipShadowColor;
     &.og-track-stsmExists {
       fill: darkslategrey;
     }
+    
+    &.og-track-cgc {
+      fill: darkgreen;
+    }
+    
+    &.og-track-totalDonors {
+      fill: mediumpurple;
+    }
   }
   
 }

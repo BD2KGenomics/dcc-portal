@@ -61,6 +61,17 @@
               }
             }
           };
+          
+          $scope.curatedFilter = {
+            gene: {
+              id: {
+                is: ['ES:' + $scope.geneSet]
+              },
+              curatedSetId: {
+                is: ['GS1']
+              }
+            }
+          };
 
           var geneLink = baseSearch + JSON.stringify($scope.geneFilter);
           $scope.geneLink = geneLink;
@@ -79,6 +90,15 @@
             size: 100
           }).then(function (data) {
             $scope.genes = data;
+          });
+
+          var geneCuratedSetPromise = Genes.getAll({
+            filters: $scope.curatedFilter,
+            size: 100
+          }).then(function (data) {
+            $scope.curatedList = _.map(data, function(g) {
+              return g.id;
+            });
           });
 
           var occurrencePromise = Occurrences.getAll({
@@ -105,7 +125,7 @@
             $scope.occurrences = data;
           });
 
-          return $q.all([donorPromise, genePromise, occurrencePromise]);
+          return $q.all([donorPromise, genePromise, geneCuratedSetPromise, occurrencePromise]);
         };
 
         $scope.initOnco =  function() {
@@ -122,7 +142,14 @@
                 };
               });
           
-          var genes = _.map($scope.genes, function (g) { return { 'id': g.id, 'symbol': g.symbol }; });
+          var genes = _.map($scope.genes, function (g) {
+            return {
+              'id': g.id,
+              'symbol': g.symbol,
+              'totalDonors': g.affectedDonorCountTotal,
+              'cgc': $scope.curatedList.indexOf(g.id) >= 0
+            };
+          });
 
           var donorIds = _.map($scope.donors, function (g) { return g.id; });
           var geneIds = _.map($scope.genes, function (d) { return d.id; });
@@ -154,6 +181,23 @@
               return 0;
             }
           };
+          
+          var geneTracks = [
+            { 'name': '# Donors affected ', 'fieldName': 'totalDonors', 'type': 'int' },
+            { 'name': 'Curated Gene Census ', 'fieldName': 'cgc', 'type': 'bool' }
+          ];
+          
+          var maxDonorsAffected = _.max(genes, function(g) { return g.totalDonors; }).totalDonors;
+
+          var geneOpacity = function (g) {
+            if (g.type === 'int') {
+              return g.value / maxDonorsAffected;
+            } else if (g.type === 'bool') {
+              return g.value ? 1 : 0;
+            } else {
+              return 1;
+            }
+          };
 
           var params = {
             donors: donors,
@@ -161,11 +205,13 @@
             observations: observations,
             element: '#oncogrid-div',
             height: 500, 
-            width: 900,
+            width: 750,
             heatMap: true,
             trackHeight: 15,
             donorTracks: donorTracks,
-            donorOpacityFunc: donorOpacity
+            donorOpacityFunc: donorOpacity,
+            geneTracks: geneTracks,
+            geneOpacityFunc: geneOpacity
           };
 
           $scope.grid = new OncoGrid(params);
