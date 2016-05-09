@@ -10,7 +10,11 @@ $shadowColor: $tooltipShadowColor;
     line {
       stroke: #fff;
       stroke-opacity: .5;
-      shape-rendering: crispEdges;
+    }
+    
+    .og-histogram-axis {
+      stroke: black;
+      stroke-opacity: .5;
     }
     
     textarea {

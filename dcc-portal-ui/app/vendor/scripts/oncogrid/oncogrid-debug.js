@@ -25,18 +25,22 @@ var OncoHistogram;
   OncoHistogram = function (params, s, rotated) {
     var _self = this;
 
+    _self.prefix = params.prefix || 'og-';
+
     _self.observations = params.observations;
     _self.svg = s;
     _self.rotated = rotated || false;
 
     _self.domain = (_self.rotated ? params.genes : params.donors) || [];
+    _self.margin = params.margin || { top: 30, right: 15, bottom: 15, left: 80 };
+
 
     _self.width = params.width || 500;
     _self.height = params.height || 500;
 
-    _self.histogramHeight = 100;
+    _self.histogramWidth = (_self.rotated ? _self.height : _self.width);
 
-    _self.margin = params.margin || { top: 30, right: 15, bottom: 15, left: 80 };
+    _self.histogramHeight = 100;
 
     _self.numDomain = _self.domain.length;
     _self.barWidth = (_self.rotated ? _self.height : _self.width) / _self.domain.length;
@@ -80,6 +84,8 @@ var OncoHistogram;
         .append('g')
         .attr('transform', 'translate(0,-'+ (_self.histogramHeight + _self.margin.top/1.61803398875) + ')');
 
+    _self.renderAxis(topCount);
+
     _self.histogram.selectAll('rect')
         .data(_self.domain)
         .enter()
@@ -116,6 +122,45 @@ var OncoHistogram;
         .transition()
         .attr('width', _self.barWidth - 1)
         .attr('x', function(d) { return _self.x(_self.getIndex(_self.domain, d.id)); });
+  };
+
+  /**
+   * Draws Axis for Histogram
+   * @param topCount Maximum value
+   */
+  OncoHistogram.prototype.renderAxis = function(topCount) {
+    var _self = this;
+
+    _self.histogram.append('line')
+        .attr('class', _self.prefix + 'histogram-axis')
+        .attr('y1', _self.histogramHeight + 5)
+        .attr('y2', _self.histogramHeight + 5)
+        .attr('x2', _self.histogramWidth + 10)
+        .attr('transform', 'translate(-5,0)');
+
+    _self.histogram.append('line')
+        .attr('class', _self.prefix + 'histogram-axis')
+        .attr('y1', 0)
+        .attr('y2', _self.histogramHeight + 5)
+        .attr('transform', 'translate(-5,0)');
+
+    _self.histogram.append('text')
+        .attr('class', 'label-text-font')
+        .attr('x', -6)
+        .attr('dy', '.32em')
+        .attr('text-anchor', 'end')
+        .text(topCount);
+
+    var halfInt = parseInt(topCount/2);
+    var secondHeight = _self.histogramHeight - _self.histogramHeight / (topCount/halfInt);
+
+    _self.histogram.append('text')
+        .attr('class', 'label-text-font')
+        .attr('x', -6)
+        .attr('y', secondHeight)
+        .attr('dy', '.32em')
+        .attr('text-anchor', 'end')
+        .text(halfInt);
   };
 
   OncoHistogram.prototype.getIndex = function(list, id) {
@@ -751,7 +796,7 @@ var OncoGrid;
   };
 
   /**
-   * Returns # of mutations a gene has
+   * Returns # of mutations a gene has as it's score
    */
   OncoGrid.prototype.mutationGeneScore = function(donor, gene) {
     var _self = this;
@@ -890,15 +935,16 @@ var OncoTrack;
     _self.cellHeight = params.trackHeight || 25;
     _self.numDomain = _self.domain.length;
 
-    _self.cellWidth  = _self.width / _self.numDomain;
+    _self.cellWidth = _self.width / _self.numDomain;
 
-    _self.availableTracks = tracks|| [];
+    _self.availableTracks = tracks || [];
     _self.opacityFunc = opacityFunc;
     _self.fillFunc = fillFunc;
 
     // TODO: This is awful, needs fixing and cleaning.
     _self.translateDown =
-        (_self.rotated ? -1 *(params.width + 150 + _self.availableTracks.length*_self.cellHeight) : params.height) || 500;
+        (_self.rotated ? -1 * (params.width + 150 + _self.availableTracks.length * _self.cellHeight) :
+            params.height) || 500;
 
     _self.height = _self.cellHeight * _self.availableTracks.length;
   };

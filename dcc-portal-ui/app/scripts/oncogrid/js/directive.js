@@ -205,7 +205,7 @@
             observations: observations,
             element: '#oncogrid-div',
             height: 500, 
-            width: 750,
+            width: 800,
             heatMap: true,
             trackHeight: 15,
             donorTracks: donorTracks,
