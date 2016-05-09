@@ -67,6 +67,7 @@ public abstract class TypeModel {
   public static final String GENE_ENTITY_SET_ID = format("%s.%s", "gene", ENTITY_SET_ID);
   public static final String MUTATION_ENTITY_SET_ID = format("%s.%s", "mutation", ENTITY_SET_ID);
   public static final String REPO_FILE_ENTITY_SET_ID = format("%s.%s", "file", ENTITY_SET_ID);
+  public static final String DRUG_GENE_ENTITY_SET_ID = format("%s.%s", "ensemblGeneId", ENTITY_SET_ID);
 
   public static final String SCORE = "_score";
 
@@ -92,7 +93,8 @@ public abstract class TypeModel {
       DONOR_ENTITY_SET_ID,
       GENE_ENTITY_SET_ID,
       MUTATION_ENTITY_SET_ID,
-      REPO_FILE_ENTITY_SET_ID);
+      REPO_FILE_ENTITY_SET_ID,
+      DRUG_GENE_ENTITY_SET_ID);
 
   protected final Map<String, FieldModel> fieldsByFullPath;
   protected final Map<String, String> fieldsByAlias;

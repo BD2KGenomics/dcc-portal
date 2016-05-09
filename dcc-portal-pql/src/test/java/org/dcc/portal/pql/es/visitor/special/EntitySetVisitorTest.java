@@ -20,6 +20,7 @@ package org.dcc.portal.pql.es.visitor.special;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.dcc.portal.pql.meta.Type.DONOR_CENTRIC;
+import static org.dcc.portal.pql.meta.Type.DRUG;
 import static org.dcc.portal.pql.meta.Type.GENE_CENTRIC;
 import static org.dcc.portal.pql.meta.Type.MUTATION_CENTRIC;
 import static org.dcc.portal.pql.meta.TypeModel.LOOKUP_INDEX;
@@ -115,6 +116,13 @@ public class EntitySetVisitorTest {
     queryContext = new QueryContext("", MUTATION_CENTRIC);
     val root = createEsAst("in(mutation.entitySetId, 'ID1')", MUTATION_CENTRIC);
     assertStructure(root, "_mutation_id");
+  }
+
+  @Test
+  public void drugEntitySet() {
+    queryContext = new QueryContext("", DRUG);
+    val root = createEsAst("in(ensemblGeneId.entitySetId, 'ID1')", DRUG);
+    assertStructure(root, "");
   }
 
   private void assertStructure(ExpressionNode root, String expectedField) {

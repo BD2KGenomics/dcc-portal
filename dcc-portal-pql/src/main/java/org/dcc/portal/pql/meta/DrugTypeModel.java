@@ -34,9 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import lombok.NonNull;
-import lombok.experimental.UtilityClass;
-
 import org.dcc.portal.pql.meta.field.ArrayFieldModel;
 import org.dcc.portal.pql.meta.field.FieldModel;
 import org.dcc.portal.pql.meta.field.LongFieldModel;
@@ -46,6 +43,9 @@ import org.dcc.portal.pql.meta.field.StringFieldModel;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import lombok.NonNull;
+import lombok.experimental.UtilityClass;
 
 /**
  * Type model of Drug index type
@@ -142,10 +142,9 @@ public class DrugTypeModel extends TypeModel {
 
     private ArrayFieldModel genes() {
       return arrayOfObjects(esField(GENES), GENES, object(
-          // string("chembl", GENES_CHEMBL),
-          // string("description", GENES_DESCRIPTION),
           stringField(GENES, UNIPROT),
-          stringField(GENES, ENSEMBL_GENE_ID)));
+          stringField(GENES, ENSEMBL_GENE_ID),
+          stringField(DRUG_GENE_ENTITY_SET_ID, DRUG_GENE_ENTITY_SET_ID)));
     }
 
     private ArrayFieldModel trialsConditions() {
@@ -187,7 +186,8 @@ public class DrugTypeModel extends TypeModel {
   // FIXME: do we need to bother with this when most of the time we want all fields?
   public static final List<String> PUBLIC_FIELDS = ImmutableList.of();
 
-  private static final Map<String, String> INTERNAL_ALIASES = ImmutableMap.<String, String> of();
+  private static final Map<String, String> INTERNAL_ALIASES = ImmutableMap.<String, String> of(
+      DRUG_GENE_ENTITY_SET_ID, "genes.ensemblGeneId");
   private static final List<String> INCLUDE_FIELDS = ImmutableList.of();
   private static final List<String> AVAILABLE_FACETS = ImmutableList.of();
 
