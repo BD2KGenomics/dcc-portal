@@ -17,21 +17,15 @@ $shadowColor: $tooltipShadowColor;
       stroke-opacity: .5;
     }
     
-    textarea {
-      padding: 2px;
-      width: 714px;
-      height: 360px;
-    }
-    
-    .gene-label {
+    .og-gene-label {
       cursor: move;
     }
     
-    .label-text-font {
+    .og-label-text-font {
       font-size: 0.5rem;
     }
     
-    .sortable-rect {
+    .og-sortable-rect {
       cursor: pointer;
       
       &:hover {
@@ -85,7 +79,7 @@ $shadowColor: $tooltipShadowColor;
     }
     
     &.og-track-cnsmExists {
-      fill: #e9931c;
+      fill: mediumseagreen;
     }
     
     &.og-track-stsmExists {
@@ -98,6 +92,10 @@ $shadowColor: $tooltipShadowColor;
     
     &.og-track-totalDonors {
       fill: mediumpurple;
+    }
+    
+    &.og-track-pcawg {
+      fill: #e9931c;
     }
   }
   

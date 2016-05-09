@@ -137,6 +137,7 @@
                   'age': (d.ageAtDiagnosis === undefined ? 0 : d.ageAtDiagnosis),
                   'sex': (d.gender === undefined ? 'unknown' : d.gender),
                   'vitalStatus': (d.vitalStatus === undefined? false : (d.vitalStatus === 'alive' ? true : false)),
+                  'pcawg': _.has(d, 'studies') && d.studies.indexOf('PCAWG') >= 0,
                   'cnsmExists': d.cnsmExists,
                   'stsmExists': d.stsmExists
                 };
@@ -161,6 +162,7 @@
           }).value();
 
           var donorTracks = [
+            { 'name': 'PCAWG', 'fieldName': 'pcawg', 'type': 'bool'},
             { 'name': 'Age at Diagnosis', 'fieldName': 'age', 'type': 'int' },
             { 'name': 'Vital Status', 'fieldName': 'vitalStatus', 'type': 'vital' },
             { 'name': 'Sex', 'fieldName': 'sex', 'type': 'sex' },
@@ -198,6 +200,11 @@
               return 1;
             }
           };
+          
+          var donorClick = function (o) {
+            window.location = /donors/ + o.donorId +
+            '?filters={"mutation":{"functionalImpact":{"is":["High"]}}}';
+          };
 
           var params = {
             donors: donors,
@@ -206,6 +213,7 @@
             element: '#oncogrid-div',
             height: 500, 
             width: 800,
+            gridClick: donorClick,
             heatMap: true,
             trackHeight: 15,
             donorTracks: donorTracks,
@@ -269,7 +277,9 @@
         };
 
         $scope.$on('$destroy', function () {
-          $scope.grid.destroy();
+          if (typeof $scope.grid !== 'undefined') {
+            $scope.grid.destroy();
+          }
         });
 
       }
